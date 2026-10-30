@@ -1,0 +1,13 @@
+# Database Configuration
+db.url=jdbc:mysql://localhost:3306/smart_campus_db?serverTimezone=Asia/Kolkata&useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+db.user=root
+db.password=your_mysql_password_here
+
+# Connection Pool / Driver Settings
+db.maxPoolSize=10
+db.connectionTimeoutMs=5000
+
+# Application Settings
+app.name=Smart Campus Complaint Prioritization and Tracking System
+app.version=1.0.0
+app.theme=light
