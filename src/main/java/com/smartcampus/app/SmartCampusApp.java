@@ -17,10 +17,9 @@ public class SmartCampusApp {
     public static void main(String[] args) {
         logger.info("Starting Smart Campus Complaint Prioritization and Tracking System v{}...", AppConfig.getAppVersion());
 
-        // 1. Initialize FlatLaf Look and Feel for modern Swing desktop appearance
         try {
             FlatLightLaf.setup();
-            // Optional: apply clean Segoe UI / System font
+
             UIManager.put("defaultFont", new Font("Segoe UI", Font.PLAIN, 12));
             logger.info("FlatLaf Look and Feel initialized.");
         } catch (Exception e) {
@@ -30,7 +29,6 @@ public class SmartCampusApp {
             } catch (Exception ignored) {}
         }
 
-        // 2. Asynchronously verify / initialize database schema and demo accounts in background
         new Thread(() -> {
             try {
                 DatabaseInitializer.initializeDatabase();
@@ -39,7 +37,6 @@ public class SmartCampusApp {
             }
         }, "DB-Init-Thread").start();
 
-        // 3. Launch UI on Event Dispatch Thread
         SwingUtilities.invokeLater(() -> {
             LoginFrame loginFrame = new LoginFrame();
             loginFrame.setVisible(true);

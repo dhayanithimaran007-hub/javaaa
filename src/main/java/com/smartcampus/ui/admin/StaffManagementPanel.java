@@ -2,9 +2,13 @@ package com.smartcampus.ui.admin;
 
 import com.smartcampus.model.User;
 import com.smartcampus.service.UserService;
+import com.smartcampus.ui.components.CardPanel;
 import com.smartcampus.ui.components.ModernButton;
+import com.smartcampus.ui.components.ToastNotification;
+import com.smartcampus.ui.theme.DesignSystem;
 
 import javax.swing.BorderFactory;
+import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -20,14 +24,13 @@ import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class StaffManagementPanel extends JPanel {
     private final JTable tableStaff;
@@ -42,59 +45,63 @@ public class StaffManagementPanel extends JPanel {
     private final List<User> currentStaffList = new ArrayList<>();
 
     public StaffManagementPanel() {
-        setLayout(new BorderLayout(10, 10));
-        setBackground(new Color(248, 250, 252));
+        setLayout(new BorderLayout(12, 12));
+        setBackground(DesignSystem.BG_CANVAS);
         setBorder(BorderFactory.createEmptyBorder(18, 20, 18, 20));
 
-        // Header
-        JPanel topBar = new JPanel(new BorderLayout());
-        topBar.setBackground(Color.WHITE);
-        topBar.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(226, 232, 240)),
-                BorderFactory.createEmptyBorder(12, 16, 12, 16)
-        ));
+        CardPanel topBar = new CardPanel(new BorderLayout());
+        topBar.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
 
-        JLabel title = new JLabel("Maintenance Staff Administration");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        title.setForeground(new Color(15, 23, 42));
+        JPanel titlePanel = new JPanel();
+        titlePanel.setOpaque(false);
+        titlePanel.setLayout(new javax.swing.BoxLayout(titlePanel, javax.swing.BoxLayout.Y_AXIS));
 
-        btnCreateStaff = new ModernButton("+ Add Maintenance Staff", ModernButton.ButtonType.PRIMARY);
+        JLabel title = new JLabel("Maintenance Staff & Dispatch Administration");
+        title.setFont(DesignSystem.FONT_TITLE);
+        title.setForeground(DesignSystem.TEXT_PRIMARY);
 
-        topBar.add(title, BorderLayout.WEST);
+        JLabel sub = new JLabel("Monitor active technician workloads, trade specializations, and account authorizations");
+        sub.setFont(DesignSystem.FONT_SMALL);
+        sub.setForeground(DesignSystem.TEXT_MUTED);
+
+        titlePanel.add(title);
+        titlePanel.add(javax.swing.Box.createVerticalStrut(2));
+        titlePanel.add(sub);
+
+        btnCreateStaff = new ModernButton("+ Register Maintenance Staff", ModernButton.ButtonType.PRIMARY);
+
+        topBar.add(titlePanel, BorderLayout.WEST);
         topBar.add(btnCreateStaff, BorderLayout.EAST);
         add(topBar, BorderLayout.NORTH);
 
-        // Center Table
-        String[] cols = {"User ID", "Staff Name", "Email Address", "Department / Trade", "Contact Phone", "Account Status"};
+        String[] cols = {"User ID", "Staff Name", "Campus Email", "Trade Specialization", "Contact Phone", "Active Tickets", "Workload Status", "Account Status"};
         tableModel = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
         tableStaff = new JTable(tableModel);
-        tableStaff.setRowHeight(32);
-        tableStaff.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tableStaff.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        tableStaff.setRowHeight(34);
+        tableStaff.setFont(DesignSystem.FONT_SMALL);
+        tableStaff.getTableHeader().setFont(DesignSystem.FONT_SMALL_BOLD);
 
-        tableStaff.getColumnModel().getColumn(0).setPreferredWidth(60);
-        tableStaff.getColumnModel().getColumn(1).setPreferredWidth(180);
+        tableStaff.getColumnModel().getColumn(0).setPreferredWidth(55);
+        tableStaff.getColumnModel().getColumn(1).setPreferredWidth(170);
         tableStaff.getColumnModel().getColumn(2).setPreferredWidth(180);
-        tableStaff.getColumnModel().getColumn(3).setPreferredWidth(160);
-        tableStaff.getColumnModel().getColumn(4).setPreferredWidth(120);
-        tableStaff.getColumnModel().getColumn(5).setPreferredWidth(100);
+        tableStaff.getColumnModel().getColumn(3).setPreferredWidth(170);
+        tableStaff.getColumnModel().getColumn(4).setPreferredWidth(110);
+        tableStaff.getColumnModel().getColumn(5).setPreferredWidth(95);
+        tableStaff.getColumnModel().getColumn(6).setPreferredWidth(120);
+        tableStaff.getColumnModel().getColumn(7).setPreferredWidth(100);
 
-        JScrollPane scrollPane = new JScrollPane(tableStaff);
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(226, 232, 240)));
-
-        JPanel centerPanel = new JPanel(new BorderLayout());
+        CardPanel centerCard = new CardPanel(new BorderLayout());
         progressBar = new JProgressBar();
         progressBar.setIndeterminate(true);
         progressBar.setVisible(false);
-        centerPanel.add(progressBar, BorderLayout.NORTH);
-        centerPanel.add(scrollPane, BorderLayout.CENTER);
+        centerCard.add(progressBar, BorderLayout.NORTH);
+        centerCard.add(new JScrollPane(tableStaff), BorderLayout.CENTER);
 
-        add(centerPanel, BorderLayout.CENTER);
+        add(centerCard, BorderLayout.CENTER);
 
-        // Bottom Action Bar
         JPanel bottomBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
         bottomBar.setOpaque(false);
 
@@ -116,10 +123,12 @@ public class StaffManagementPanel extends JPanel {
         progressBar.setVisible(true);
         btnRefresh.setEnabled(false);
 
-        new SwingWorker<List<User>, Void>() {
+        new SwingWorker<StaffData, Void>() {
             @Override
-            protected List<User> doInBackground() throws Exception {
-                return userService.listUsers("STAFF", null, null);
+            protected StaffData doInBackground() throws Exception {
+                List<User> list = userService.listUsers("STAFF", null, null);
+                Map<Integer, Integer> workloads = userService.getStaffWorkloadMap();
+                return new StaffData(list, workloads);
             }
 
             @Override
@@ -127,19 +136,27 @@ public class StaffManagementPanel extends JPanel {
                 progressBar.setVisible(false);
                 btnRefresh.setEnabled(true);
                 try {
-                    List<User> list = get();
+                    StaffData data = get();
                     currentStaffList.clear();
-                    currentStaffList.addAll(list);
+                    currentStaffList.addAll(data.staff);
                     tableModel.setRowCount(0);
 
-                    for (User u : list) {
+                    for (User u : data.staff) {
+                        int activeTasks = data.workloadMap.getOrDefault(u.getUserId(), 0);
+                        String statusTag;
+                        if (activeTasks == 0) statusTag = "Available (0)";
+                        else if (activeTasks <= 2) statusTag = "Optimal (" + activeTasks + ")";
+                        else statusTag = "Heavy (" + activeTasks + ")";
+
                         tableModel.addRow(new Object[]{
                                 u.getUserId(),
                                 u.getFullName(),
                                 u.getEmail(),
-                                u.getDepartment() != null ? u.getDepartment() : "General",
-                                u.getPhone() != null ? u.getPhone() : "",
-                                u.isActive() ? "Active" : "Deactivated"
+                                u.getDepartment() != null ? u.getDepartment() : "General Facilities",
+                                u.getPhone() != null && !u.getPhone().isBlank() ? u.getPhone() : "-",
+                                activeTasks + " active",
+                                statusTag,
+                                u.isActive() ? "ACTIVE" : "INACTIVE"
                         });
                     }
                 } catch (Exception ex) {
@@ -152,13 +169,14 @@ public class StaffManagementPanel extends JPanel {
 
     private void openCreateStaffDialog() {
         JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
-        JDialog dlg = new JDialog(parent, "Create Maintenance Staff Account", true);
-        dlg.setSize(440, 420);
+        JDialog dlg = new JDialog(parent, "Register New Maintenance Staff Account", true);
+        dlg.setSize(480, 460);
         dlg.setLocationRelativeTo(parent);
         dlg.setLayout(new BorderLayout());
 
         JPanel form = new JPanel(new GridBagLayout());
-        form.setBorder(BorderFactory.createEmptyBorder(15, 20, 10, 20));
+        form.setBackground(DesignSystem.BG_CANVAS);
+        form.setBorder(BorderFactory.createEmptyBorder(18, 22, 14, 22));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(6, 6, 6, 6);
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -166,28 +184,36 @@ public class StaffManagementPanel extends JPanel {
         JTextField txtName = new JTextField();
         JTextField txtEmail = new JTextField();
         JPasswordField txtPass = new JPasswordField();
-        JTextField txtDept = new JTextField("Electrical Maintenance");
+        JComboBox<String> cmbDept = new JComboBox<>(new String[]{
+                "Electrical Maintenance",
+                "Plumbing & Sanitation",
+                "HVAC & Climate Control",
+                "Network & IT Support",
+                "Classroom Equipment & AV",
+                "Civil & Structural Maintenance",
+                "General Facilities"
+        });
         JTextField txtPhone = new JTextField();
 
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.35;
-        form.add(new JLabel("Staff Full Name *:"), gbc);
+        form.add(new JLabel("Full Name *:"), gbc);
         gbc.gridx = 1; gbc.weightx = 0.65;
         form.add(txtName, gbc);
 
         gbc.gridx = 0; gbc.gridy = 1;
-        form.add(new JLabel("Staff Email *:"), gbc);
+        form.add(new JLabel("Campus Email *:"), gbc);
         gbc.gridx = 1;
         form.add(txtEmail, gbc);
 
         gbc.gridx = 0; gbc.gridy = 2;
-        form.add(new JLabel("Initial Password *:"), gbc);
+        form.add(new JLabel("Password *:"), gbc);
         gbc.gridx = 1;
         form.add(txtPass, gbc);
 
         gbc.gridx = 0; gbc.gridy = 3;
-        form.add(new JLabel("Trade / Department:"), gbc);
+        form.add(new JLabel("Trade Specialization *:"), gbc);
         gbc.gridx = 1;
-        form.add(txtDept, gbc);
+        form.add(cmbDept, gbc);
 
         gbc.gridx = 0; gbc.gridy = 4;
         form.add(new JLabel("Contact Phone:"), gbc);
@@ -196,34 +222,53 @@ public class StaffManagementPanel extends JPanel {
 
         dlg.add(form, BorderLayout.CENTER);
 
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        ModernButton btnSave = new ModernButton("Create Staff", ModernButton.ButtonType.PRIMARY);
+        JPanel btnBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
+        btnBar.setBackground(Color.WHITE);
+        btnBar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, DesignSystem.CARD_BORDER));
+
+        ModernButton btnSave = new ModernButton("Create Staff Account", ModernButton.ButtonType.PRIMARY);
         ModernButton btnCancel = new ModernButton("Cancel", ModernButton.ButtonType.SECONDARY);
-        btnPanel.add(btnCancel);
-        btnPanel.add(btnSave);
-        dlg.add(btnPanel, BorderLayout.SOUTH);
+
+        btnBar.add(btnCancel);
+        btnBar.add(btnSave);
+        dlg.add(btnBar, BorderLayout.SOUTH);
 
         btnCancel.addActionListener(e -> dlg.dispose());
         btnSave.addActionListener(e -> {
             String name = txtName.getText().trim();
             String email = txtEmail.getText().trim();
-            String pass = new String(txtPass.getPassword());
-            String dept = txtDept.getText().trim();
+            String pass = new String(txtPass.getPassword()).trim();
+            String dept = (String) cmbDept.getSelectedItem();
             String phone = txtPhone.getText().trim();
 
             if (name.isEmpty() || email.isEmpty() || pass.isEmpty()) {
-                JOptionPane.showMessageDialog(dlg, "Name, Email, and Password are required.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(dlg, "Name, email, and password are required.", "Validation Error", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
-            try {
-                userService.createStaffAccount(name, email, pass, dept, phone);
-                JOptionPane.showMessageDialog(dlg, "Staff account created successfully for " + name, "Success", JOptionPane.INFORMATION_MESSAGE);
-                dlg.dispose();
-                loadStaffList();
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(dlg, "Failed to create staff account: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
+            btnSave.setEnabled(false);
+            btnCancel.setEnabled(false);
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    userService.createStaffAccount(name, email, pass, dept, phone);
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    btnSave.setEnabled(true);
+                    btnCancel.setEnabled(true);
+                    try {
+                        get();
+                        ToastNotification.showSuccess(parent, "Staff account for " + name + " created successfully.");
+                        dlg.dispose();
+                        loadStaffList();
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(dlg, "Failed to create staff account: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }.execute();
         });
 
         dlg.setVisible(true);
@@ -232,24 +277,45 @@ public class StaffManagementPanel extends JPanel {
     private void handleToggleActive() {
         int row = tableStaff.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a staff member from the table.", "Selection Required", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Please select a staff member from the directory.", "Select Staff", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
-        User staff = currentStaffList.get(row);
-        boolean newActive = !staff.isActive();
-        String prompt = newActive
-                ? "Activate account for " + staff.getFullName() + "?"
-                : "Deactivate account for " + staff.getFullName() + "? They will not be able to log in.";
+        User selected = currentStaffList.get(row);
+        boolean targetStatus = !selected.isActive();
+        String actionName = targetStatus ? "activate" : "deactivate";
 
-        int confirm = JOptionPane.showConfirmDialog(this, prompt, "Confirm Status Change", JOptionPane.YES_NO_OPTION);
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to " + actionName + " staff account: " + selected.getFullName() + "?",
+                "Confirm Account Status Change", JOptionPane.YES_NO_OPTION);
+
         if (confirm == JOptionPane.YES_OPTION) {
-            try {
-                userService.toggleUserActive(staff.getUserId(), newActive);
-                loadStaffList();
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Failed to update staff status: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
+            btnToggleActive.setEnabled(false);
+            progressBar.setVisible(true);
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    userService.toggleUserActive(selected.getUserId(), targetStatus);
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    btnToggleActive.setEnabled(true);
+                    progressBar.setVisible(false);
+                    try {
+                        get();
+                        JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(StaffManagementPanel.this);
+                        ToastNotification.showSuccess(parent, "Staff account " + actionName + "d successfully.");
+                        loadStaffList();
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(StaffManagementPanel.this,
+                                "Failed to update staff account: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }.execute();
         }
     }
+
+    private record StaffData(List<User> staff, Map<Integer, Integer> workloadMap) {}
 }

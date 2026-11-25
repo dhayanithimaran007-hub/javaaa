@@ -1,28 +1,9 @@
--- =======================================================================
--- Smart Campus Complaint Prioritization and Tracking System
--- MySQL 8.0+ Database Creation and Initialization Script
--- Location: database/schema.sql
--- =======================================================================
--- This script is idempotent and safe to rerun without dropping data.
--- It creates the database, creates all 6 tables, constraints, indexes,
--- and provisions the default seed accounts and demo records.
--- =======================================================================
-
--- -----------------------------------------------------------------------
--- 1. DATABASE CREATION
--- -----------------------------------------------------------------------
 CREATE DATABASE IF NOT EXISTS smart_campus_db
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
 USE smart_campus_db;
 
--- -----------------------------------------------------------------------
--- 2. TABLE DEFINITIONS
--- -----------------------------------------------------------------------
-
--- 2.1 USERS TABLE
--- Stores campus accounts (Students, Administrators, Maintenance Staff)
 CREATE TABLE IF NOT EXISTS users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
@@ -38,8 +19,6 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_users_active (active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2.2 COMPLAINTS TABLE
--- Core entity storing complaints, urgency parameters, and computed priority
 CREATE TABLE IF NOT EXISTS complaints (
     complaint_id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
@@ -72,8 +51,6 @@ CREATE TABLE IF NOT EXISTS complaints (
     INDEX idx_complaints_building (building)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2.3 COMPLAINT ASSIGNMENTS TABLE
--- Tracks technician work order assignments by administrators
 CREATE TABLE IF NOT EXISTS complaint_assignments (
     assignment_id INT AUTO_INCREMENT PRIMARY KEY,
     complaint_id INT NOT NULL,
@@ -89,8 +66,6 @@ CREATE TABLE IF NOT EXISTS complaint_assignments (
     INDEX idx_assignments_staff_active (staff_id, is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2.4 COMPLAINT STATUS HISTORY TABLE
--- Immutable audit ledger recording each lifecycle transition
 CREATE TABLE IF NOT EXISTS complaint_status_history (
     history_id INT AUTO_INCREMENT PRIMARY KEY,
     complaint_id INT NOT NULL,
@@ -105,8 +80,6 @@ CREATE TABLE IF NOT EXISTS complaint_status_history (
     INDEX idx_history_changed_at (changed_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2.5 COMPLAINT FEEDBACK TABLE
--- Student satisfaction rating (1-5 stars) and review upon resolution
 CREATE TABLE IF NOT EXISTS complaint_feedback (
     feedback_id INT AUTO_INCREMENT PRIMARY KEY,
     complaint_id INT NOT NULL UNIQUE,
@@ -119,8 +92,6 @@ CREATE TABLE IF NOT EXISTS complaint_feedback (
     CONSTRAINT chk_feedback_rating CHECK (rating BETWEEN 1 AND 5)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2.6 AUDIT LOGS TABLE
--- System security and administrative event trail
 CREATE TABLE IF NOT EXISTS audit_logs (
     audit_id INT AUTO_INCREMENT PRIMARY KEY,
     actor_user_id INT NOT NULL,
@@ -135,15 +106,155 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     INDEX idx_audit_action (action)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- -----------------------------------------------------------------------
--- 3. INITIAL SEED DATA
--- -----------------------------------------------------------------------
--- Passwords below are pre-computed BCrypt hashes (cost factor 12):
---   Admin:   admin@campus.edu         / Admin@123
---   Staff:   electrician@campus.edu   / Staff@123
---   Staff:   plumber@campus.edu       / Staff@123
---   Student: alice@student.campus.edu / Student@123
---   Student: bob@student.campus.edu   / Student@123
+CREATE TABLE IF NOT EXISTS complaint_escalations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    complaint_id INT NOT NULL,
+    escalation_level INT NOT NULL,
+    previous_level INT NOT NULL DEFAULT 0,
+    sla_status VARCHAR(30) NOT NULL DEFAULT 'ON_TRACK',
+    escalation_reason TEXT NOT NULL,
+    breach_at TIMESTAMP NULL DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    acknowledged_at TIMESTAMP NULL DEFAULT NULL,
+    acknowledged_by INT NULL DEFAULT NULL,
+    intervention_note TEXT DEFAULT NULL,
+    CONSTRAINT fk_esc_complaint FOREIGN KEY (complaint_id) REFERENCES complaints(complaint_id) ON DELETE CASCADE,
+    CONSTRAINT fk_esc_ack_user FOREIGN KEY (acknowledged_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    CONSTRAINT chk_esc_level CHECK (escalation_level BETWEEN 0 AND 3),
+    UNIQUE KEY uk_complaint_esc_level (complaint_id, escalation_level),
+    INDEX idx_esc_complaint (complaint_id),
+    INDEX idx_esc_level (escalation_level),
+    INDEX idx_esc_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS predictive_analysis (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    analysis_period_start TIMESTAMP NOT NULL,
+    analysis_period_end TIMESTAMP NOT NULL,
+    analysis_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    total_complaints_analyzed INT NOT NULL DEFAULT 0,
+    analysis_summary TEXT NOT NULL,
+    generated_by INT NULL DEFAULT NULL,
+    CONSTRAINT fk_pred_user FOREIGN KEY (generated_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_pred_timestamp (analysis_timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS maintenance_risk_assessments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    analysis_id INT NOT NULL,
+    building VARCHAR(100) NOT NULL,
+    location VARCHAR(120) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    incident_count INT NOT NULL,
+    risk_score DECIMAL(5,2) NOT NULL,
+    risk_level ENUM('LOW', 'MODERATE', 'HIGH', 'CRITICAL') NOT NULL,
+    contributing_factors TEXT NOT NULL,
+    recommendation TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_risk_analysis FOREIGN KEY (analysis_id) REFERENCES predictive_analysis(id) ON DELETE CASCADE,
+    CONSTRAINT chk_risk_score CHECK (risk_score BETWEEN 0.00 AND 100.00),
+    INDEX idx_risk_analysis (analysis_id),
+    INDEX idx_risk_building_cat (building, category),
+    INDEX idx_risk_level (risk_level)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS preventive_maintenance_recommendations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    risk_assessment_id INT NOT NULL,
+    building VARCHAR(100) NOT NULL,
+    location VARCHAR(120) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    risk_score DECIMAL(5,2) NOT NULL,
+    supporting_complaint_count INT NOT NULL DEFAULT 0,
+    analysis_period_days INT NOT NULL DEFAULT 30,
+    urgency VARCHAR(30) NOT NULL DEFAULT 'MEDIUM',
+    recommendation TEXT NOT NULL,
+    status ENUM('NEW', 'UNDER_REVIEW', 'APPROVED', 'SCHEDULED', 'COMPLETED', 'DISMISSED') NOT NULL DEFAULT 'NEW',
+    scheduled_date TIMESTAMP NULL DEFAULT NULL,
+    completed_at TIMESTAMP NULL DEFAULT NULL,
+    created_by INT NULL DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_rec_assessment FOREIGN KEY (risk_assessment_id) REFERENCES maintenance_risk_assessments(id) ON DELETE CASCADE,
+    CONSTRAINT fk_rec_creator FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_rec_status (status),
+    INDEX idx_rec_building_cat (building, category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS complaint_escalations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    complaint_id INT NOT NULL,
+    escalation_level INT NOT NULL,
+    previous_level INT NOT NULL DEFAULT 0,
+    sla_status VARCHAR(30) NOT NULL DEFAULT 'ON_TRACK',
+    escalation_reason TEXT NOT NULL,
+    breach_at TIMESTAMP NULL DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    acknowledged_at TIMESTAMP NULL DEFAULT NULL,
+    acknowledged_by INT NULL DEFAULT NULL,
+    intervention_note TEXT DEFAULT NULL,
+    CONSTRAINT fk_esc_complaint FOREIGN KEY (complaint_id) REFERENCES complaints(complaint_id) ON DELETE CASCADE,
+    CONSTRAINT fk_esc_ack_user FOREIGN KEY (acknowledged_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    CONSTRAINT chk_esc_level CHECK (escalation_level BETWEEN 0 AND 3),
+    UNIQUE KEY uk_complaint_esc_level (complaint_id, escalation_level),
+    INDEX idx_esc_complaint (complaint_id),
+    INDEX idx_esc_level (escalation_level),
+    INDEX idx_esc_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS predictive_analysis (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    analysis_period_start TIMESTAMP NOT NULL,
+    analysis_period_end TIMESTAMP NOT NULL,
+    analysis_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    total_complaints_analyzed INT NOT NULL DEFAULT 0,
+    analysis_summary TEXT NOT NULL,
+    generated_by INT NULL DEFAULT NULL,
+    CONSTRAINT fk_pred_user FOREIGN KEY (generated_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_pred_timestamp (analysis_timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS maintenance_risk_assessments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    analysis_id INT NOT NULL,
+    building VARCHAR(100) NOT NULL,
+    location VARCHAR(120) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    incident_count INT NOT NULL,
+    risk_score DECIMAL(5,2) NOT NULL,
+    risk_level ENUM('LOW', 'MODERATE', 'HIGH', 'CRITICAL') NOT NULL,
+    contributing_factors TEXT NOT NULL,
+    recommendation TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_risk_analysis FOREIGN KEY (analysis_id) REFERENCES predictive_analysis(id) ON DELETE CASCADE,
+    CONSTRAINT chk_risk_score CHECK (risk_score BETWEEN 0.00 AND 100.00),
+    INDEX idx_risk_analysis (analysis_id),
+    INDEX idx_risk_building_cat (building, category),
+    INDEX idx_risk_level (risk_level)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS preventive_maintenance_recommendations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    risk_assessment_id INT NOT NULL,
+    building VARCHAR(100) NOT NULL,
+    location VARCHAR(120) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    risk_score DECIMAL(5,2) NOT NULL,
+    supporting_complaint_count INT NOT NULL DEFAULT 0,
+    analysis_period_days INT NOT NULL DEFAULT 30,
+    urgency VARCHAR(30) NOT NULL DEFAULT 'MEDIUM',
+    recommendation TEXT NOT NULL,
+    status ENUM('NEW', 'UNDER_REVIEW', 'APPROVED', 'SCHEDULED', 'COMPLETED', 'DISMISSED') NOT NULL DEFAULT 'NEW',
+    scheduled_date TIMESTAMP NULL DEFAULT NULL,
+    completed_at TIMESTAMP NULL DEFAULT NULL,
+    created_by INT NULL DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_rec_assessment FOREIGN KEY (risk_assessment_id) REFERENCES maintenance_risk_assessments(id) ON DELETE CASCADE,
+    CONSTRAINT fk_rec_creator FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_rec_status (status),
+    INDEX idx_rec_building_cat (building, category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO users (user_id, full_name, email, password_hash, role, department, phone, active) VALUES
 (1, 'Campus Administrator', 'admin@campus.edu', '$2a$12$6LT7GJOQUYo9RqjI/wqkBO5EjfIfLfNrgeNnTK5ftYHJ9EIMf.ySi', 'ADMIN', 'Administration', '9876543210', TRUE),
@@ -153,7 +264,6 @@ INSERT INTO users (user_id, full_name, email, password_hash, role, department, p
 (5, 'Bob Verghese', 'bob@student.campus.edu', '$2a$12$hdbbAfxhYEarTxU8Iezf5u/RdeNlsbBhXDd.jX0BakGH5B2sZtnTy', 'STUDENT', 'Mechanical Engineering', '9876543214', TRUE)
 ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash);
 
--- Sample complaints for immediate evaluation
 INSERT IGNORE INTO complaints (complaint_id, student_id, title, description, category, building, room_number,
     severity, safety_risk, people_affected, operational_impact, priority_score, priority, is_safety_critical, status, created_at, resolved_at)
 VALUES
@@ -169,13 +279,11 @@ VALUES
 (4, 5, 'Broken Projector in Lecture Hall 3', 'Projector HDMI port does not transmit video output. Morning lectures disrupted.',
  'Classroom Equipment', 'Engineering Block', 'LH 301', 3, 0, 80, 4, 49.00, 'MEDIUM', FALSE, 'SUBMITTED', DATE_SUB(NOW(), INTERVAL 2 HOUR), NULL);
 
--- Sample assignments
 INSERT IGNORE INTO complaint_assignments (assignment_id, complaint_id, staff_id, assigned_by, assigned_at, notes, is_active)
 VALUES
 (1, 1, 2, 1, DATE_SUB(NOW(), INTERVAL 3 HOUR), 'Urgent safety hazard - inspect immediately', TRUE),
 (2, 3, 3, 1, DATE_SUB(NOW(), INTERVAL 20 HOUR), 'Fix basin plumbing', FALSE);
 
--- Sample status history
 INSERT IGNORE INTO complaint_status_history (history_id, complaint_id, changed_by, old_status, new_status, remarks, changed_at)
 VALUES
 (1, 1, 4, NULL, 'SUBMITTED', 'Complaint submitted.', DATE_SUB(NOW(), INTERVAL 4 HOUR)),
@@ -186,7 +294,6 @@ VALUES
 (6, 3, 3, 'SUBMITTED', 'RESOLVED', 'Resolution: Replaced Teflon tape and washers. No more leaks.', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
 (7, 4, 5, NULL, 'SUBMITTED', 'Complaint submitted.', DATE_SUB(NOW(), INTERVAL 2 HOUR));
 
--- Sample feedback
 INSERT IGNORE INTO complaint_feedback (feedback_id, complaint_id, student_id, rating, comments, created_at)
 VALUES
 (1, 3, 4, 5, 'Promptly fixed! The washroom is clean and the leak stopped.', DATE_SUB(NOW(), INTERVAL 1 HOUR));

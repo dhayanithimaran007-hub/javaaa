@@ -23,10 +23,6 @@ public class DBConnection {
 
     private DBConnection() {}
 
-    /**
-     * Validates database connection parameters before attempting a JDBC connection.
-     * Prevents silent fallbacks to empty passwords and produces actionable error messages.
-     */
     public static void validateConfiguration(String url, String user, String password) throws SQLException {
         if (url == null || url.isBlank()) {
             throw new SQLException("Database connection URL is not configured. Please specify 'db.url' in 'config/application.properties'.");
@@ -39,9 +35,6 @@ public class DBConnection {
         }
     }
 
-    /**
-     * Obtains a new JDBC connection using currently configured credentials.
-     */
     public static Connection getConnection() throws SQLException {
         AppConfig.ensureInitialized();
         String url = AppConfig.getDbUrl();
@@ -54,7 +47,7 @@ public class DBConnection {
             DriverManager.setLoginTimeout(5);
             return DriverManager.getConnection(url, user, password);
         } catch (SQLException e) {
-            // Mask password from log
+
             logger.error("Failed to establish database connection to {} as user '{}': {}",
                     maskUrl(url), user, e.getMessage());
             throw new SQLException("Unable to connect to MySQL database (" + maskUrl(url) + "). " +
@@ -62,10 +55,6 @@ public class DBConnection {
         }
     }
 
-    /**
-     * Executes 'SELECT 1' to verify connection health.
-     * @return true if connection succeeds, false otherwise.
-     */
     public static boolean testConnection() {
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
@@ -77,9 +66,6 @@ public class DBConnection {
         }
     }
 
-    /**
-     * Tests a specific set of connection parameters without saving them.
-     */
     public static boolean testSpecificConnection(String url, String user, String password) throws SQLException {
         validateConfiguration(url, user, password);
         DriverManager.setLoginTimeout(5);
@@ -92,14 +78,11 @@ public class DBConnection {
 
     public static String maskUrl(String url) {
         if (url == null) return "null";
-        // Remove password parameter if present in query string or authority
+
         return url.replaceAll("(?i)password=[^&]*", "password=***")
                   .replaceAll("://([^:]+):([^@]+)@", "://$1:***@");
     }
 
-    /**
-     * CLI utility to verify database connectivity from the terminal without starting the GUI.
-     */
     public static void main(String[] args) {
         String url = AppConfig.getDbUrl();
         String user = AppConfig.getDbUser();

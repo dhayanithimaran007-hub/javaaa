@@ -5,7 +5,6 @@ echo =======================================================================
 echo Smart Campus Complaint Prioritization and Tracking System - Launcher
 echo =======================================================================
 
-:: Locate Java
 where java >nul 2>nul
 if %ERRORLEVEL% equ 0 (
     set JAVA_CMD=java
@@ -18,7 +17,6 @@ if %ERRORLEVEL% equ 0 (
     exit /b 1
 )
 
-:: Locate JAR
 set JAR_FILE=target\smart-campus-complaint-system-1.0.0.jar
 if not exist "%JAR_FILE%" (
     if exist "target\smart-campus-complaint-system-1.0.0-executable.jar" (

@@ -41,30 +41,26 @@ class ValidationUtilTest {
         assertTrue(ValidationUtil.isStrongPassword("Student@123"));
         assertTrue(ValidationUtil.isStrongPassword("AdminPass99"));
 
-        // Too short (< 8 chars)
         assertFalse(ValidationUtil.isStrongPassword("Pass1"));
-        // No digits
+
         assertFalse(ValidationUtil.isStrongPassword("OnlyLettersPassword"));
-        // No letters
+
         assertFalse(ValidationUtil.isStrongPassword("1234567890"));
     }
 
     @Test
     @DisplayName("CSV Formula Injection Escaping: Cells starting with =, +, -, @ must be neutralized with a leading single quote")
     void testCsvFormulaEscaping() {
-        // Attack payload starting with =cmd
+
         String escapedFormula = ValidationUtil.escapeCsvCell("=cmd|'/C calc'!A0");
         assertTrue(escapedFormula.startsWith("'="), "Formula should be neutralized with leading quote: " + escapedFormula);
 
-        // Payload with @SUM
         String escapedAt = ValidationUtil.escapeCsvCell("@SUM(1,2)");
         assertTrue(escapedAt.contains("'@SUM"), "Escaped cell should contain neutralized formula: " + escapedAt);
 
-        // Payload with + or -
         String escapedPlus = ValidationUtil.escapeCsvCell("+12345");
         assertTrue(escapedPlus.startsWith("'+"));
 
-        // Regular safe text
         String safeText = ValidationUtil.escapeCsvCell("Standard Campus Title");
         assertEquals("Standard Campus Title", safeText);
     }
@@ -72,11 +68,10 @@ class ValidationUtilTest {
     @Test
     @DisplayName("CSV Quote and Comma Escaping (RFC 4180)")
     void testCsvRFC4180Escaping() {
-        // String with comma
+
         String withComma = ValidationUtil.escapeCsvCell("Science Block A, Room 101");
         assertEquals("\"Science Block A, Room 101\"", withComma);
 
-        // String with double quotes
         String withQuote = ValidationUtil.escapeCsvCell("Lab \"Super\" PC");
         assertEquals("\"Lab \"\"Super\"\" PC\"", withQuote);
     }

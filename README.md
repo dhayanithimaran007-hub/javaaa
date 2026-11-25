@@ -1,77 +1,53 @@
-# Smart Campus Complaint Prioritization and Tracking System
-## Native Java Swing Desktop Application with MySQL & Automated Priority Engine
+# Smart Campus — Elite Campus Intelligence & Complaint Management Platform
+## Enterprise Java Swing Desktop Application with MySQL & Deterministic Priority Engine
 
 [![Java](https://img.shields.io/badge/Java-25%2B-blue.svg)](https://www.oracle.com/java/)
 [![Swing](https://img.shields.io/badge/GUI-Java%20Swing%20%2B%20FlatLaf-green.svg)](https://www.formdev.com/flatlaf/)
 [![Database](https://img.shields.io/badge/Database-MySQL%208.x-orange.svg)](https://www.mysql.com/)
 [![Build](https://img.shields.io/badge/Build-Maven-red.svg)](https://maven.apache.org/)
-[![Tests](https://img.shields.io/badge/Tests-60%2F60%20Passing-brightgreen.svg)](docs/test-cases.md)
+[![Tests](https://img.shields.io/badge/Tests-69%2F69%20Passing-brightgreen.svg)](docs/test-cases.md)
 
 ---
 
 ## 1. Abstract
-The **Smart Campus Complaint Prioritization and Tracking System** is a robust, modular desktop application engineered to streamline university facility management. Campus issues such as hazardous electrical faults, water leakages, internet outages, and broken laboratory instruments frequently suffer from delayed resolution due to manual reporting bottlenecks and lack of objective urgency scoring. 
+The **Smart Campus — Elite Campus Intelligence & Complaint Management Platform** is a commercial-grade desktop operations suite engineered to revolutionize university facility and incident management. Campus grievances—such as hazardous electrical faults, water leaks, network outages, and structural hazards—frequently suffer from resolution paralysis when handled through subjective manual channels. 
 
-This application introduces an automated, deterministic **Priority Scoring Engine** that mathematically classifies complaints based on technical severity, physical safety hazards, affected occupant volume, and academic operational disruption. Built with native Java Swing, FlatLaf modern UI, and MySQL persistence, it delivers dedicated role-based portals for **Students**, **Campus Administrators**, and **Maintenance Staff**, backed by full audit history and spreadsheet formula-safe reporting.
+This platform transforms campus maintenance operations into an **Operations Command Center** powered by an auditable, deterministic **Priority Scoring Engine**, live telemetry feeds, real-time workload balancing, and multi-tier role-based access for **Students**, **Campus Administrators**, and **Maintenance Staff**. Built purely with native Java Swing, FlatLaf, Java 2D Graphics, and MySQL persistence, it combines consumer-grade aesthetic elegance with mission-critical enterprise engineering.
 
 ---
 
 ## 2. Problem Statement
-In traditional campus environments:
-1. **Subjective Prioritization**: Complaints are processed strictly chronologically or based on caller volume, allowing life-safety hazards (e.g., sparking wires in labs) to wait behind cosmetic repairs.
-2. **Lack of Transparency**: Students have no visibility into whether their complaint has been reviewed, dispatched, or when it will be fixed.
-3. **Accountability Gaps**: Technicians lack structured progress-logging tools, and administrators cannot track mean resolution times or recurring facility failures.
-4. **Data Vulnerabilities**: Many student systems store plaintext credentials or allow unauthorized cross-student data viewing.
+In traditional campus management setups:
+1. **Subjective Prioritization**: Complaints are processed strictly chronologically or based on caller volume, allowing life-safety hazards (e.g., sparking electrical lines in laboratories) to languish behind routine paint touch-ups.
+2. **Operational Opacity**: Students and facility managers lack real-time visibility into complaint triage, dispatch status, SLA milestones, and technician assignment.
+3. **Technician Dispatch Imbalance**: Work orders are assigned without visibility into trade specializations or current task burdens, resulting in technician burnout and extended turnaround times.
+4. **Data Security & Formula Risks**: Legacy campus tools often store plaintext passwords, expose student records to unauthorized eyes, or fail to protect CSV exports from formula injection attacks.
 
 ---
 
-## 3. Objectives
-- Develop an enterprise-grade desktop application using **Java 25**, **Java Swing**, and **FlatLaf**.
-- Implement a transparent, auditable **Deterministic Priority Formula** combining 4 weighted factors.
-- Provide strict **Role-Based Access Control (RBAC)** across Student, Administrator, and Staff tiers.
-- Guarantee non-blocking responsiveness by running all database queries off the Swing Event Dispatch Thread using `SwingWorker`.
-- Persist structured records in **MySQL 8.x** with ACID transactions and immutable chronological status audit history.
-- Ensure 100% test coverage for priority scoring boundaries, lifecycle transitions, CSV formula sanitization, and password security.
+## 3. Core Objectives
+- Deliver a native, commercial-grade desktop application using **Java 25**, **Java Swing**, and **FlatLaf**.
+- Implement an explainable, auditable **Deterministic Priority Formula** combining technical severity, safety risk, affected occupant count, and operational impact.
+- Provide a full-featured **Campus Operations Command Center** with live telemetry, safety alert banners, 8 real-time KPI metrics, interactive 2D charts, and live activity streams.
+- Introduce an **Intelligent Staff Assignment Engine** pairing trade specialization with active technician workload metrics.
+- Guarantee non-blocking UI responsiveness using `SwingWorker` for 100% of database queries.
+- Ensure strict multi-tier **Role-Based Access Control (RBAC)**, BCrypt password hashing, parameter-bound `PreparedStatement` execution, and spreadsheet formula neutralization.
+- Maintain 100% test coverage across priority scoring boundaries, lifecycle state machines, configuration resolution, and security policies (**69/69 automated tests**).
 
 ---
 
-## 4. Scope
-- **Student Scope**: Account registration, complaint lodging, real-time priority preview, personal complaint tracking, status timeline inspection, satisfaction feedback, and password updates.
-- **Administrator Scope**: Full campus complaints visibility, priority & safety-critical filtering, staff assignment, status overrides/rejections with mandatory notes, technician management, user directory administration, KPI statistics, and CSV export.
-- **Maintenance Staff Scope**: Viewing assigned work orders, updating task progress, logging work notes, and recording final resolution summaries.
-- **Excluded Scope**: Public internet exposure (application communicates directly with MySQL via JDBC, designed for intranet/academic local deployment).
+## 4. System Architecture & Project Structure
 
----
-
-## 5. Technology Stack
-
-| Layer | Component / Tool | Version / Details |
-|---|---|---|
-| **Runtime** | Java JDK | OpenJDK / Oracle JDK 25+ (Tested on Java 25) |
-| **User Interface** | Java Swing + FlatLaf | FlatLaf 3.5.4 (Modern clean styling, badge renderers) |
-| **Database** | MySQL Server | MySQL Community Server 8.0.x / 8.3.x |
-| **Driver** | MySQL Connector/J | 8.3.0 |
-| **Password Security** | BCrypt | `at.favre.lib:bcrypt:0.10.2` (Cost factor 12) |
-| **Logging** | SLF4J + Logback | SLF4J 2.0.13 + Logback Classic 1.5.6 (Console & Rolling File) |
-| **Testing** | JUnit 5 Jupiter | JUnit 5.10.2 (60 automated unit & boundary tests) |
-| **Build & Packaging** | Apache Maven | Maven 3.9+ with `maven-shade-plugin` 3.5.3 (Single Fat Executable JAR) |
-
----
-
-## 6. System Architecture
-
-The application adopts a multi-tier architectural pattern:
-- **Presentation Layer**: Swing frames (`LoginFrame`, `StudentDashboard`, `AdminDashboard`, `StaffDashboard`) using FlatLaf components and custom badge renderers.
-- **Security & Authorization Layer**: `UserSession` singleton managing current desktop session context, verifying role permissions, and enforcing student ownership rules.
-- **Service Layer**: Business workflows (`PriorityService`, `ComplaintService`, `UserService`, `DatabaseHealthService`).
+The platform adopts a clean multi-tier architectural pattern:
+- **Presentation Layer**: Swing frames and panels styled with the `DesignSystem` token palette, collapsible `ModernSidebar`, rounded `CardPanel` containers, and Java 2D Graphics charts (`DonutChartPanel`, `BarChartPanel`, `HorizontalBarChartPanel`, `TrendLineChartPanel`).
+- **Security & Authorization Layer**: `UserSession` singleton managing current desktop session context, verifying role permissions, and enforcing student ownership boundaries.
+- **Service Layer**: Business engines (`PriorityService`, `ComplaintService`, `UserService`, `DatabaseHealthService`) providing SLA mapping, explainability breakdowns, and staff workload dispatch recommendations.
 - **Data Access Layer (DAO)**: Pure JDBC with `PreparedStatement` parameters and transactional isolation (`Connection.setAutoCommit(false)`).
 - **Persistence Layer**: Relational schema in MySQL (`smart_campus_db`).
 
-Detailed architectural diagrams and sequence flows are documented in [docs/architecture.md](docs/architecture.md).
-
 ```
 d:\Java project\
-├── pom.xml                                      # Maven configuration & packaging
+├── pom.xml                                      # Maven configuration & shade fat-jar packaging
 ├── run.bat                                      # One-click Windows launch script
 ├── README.md                                    # Comprehensive system documentation
 ├── config/
@@ -83,25 +59,53 @@ d:\Java project\
 │   │   │   ├── app/SmartCampusApp.java          # Main Application Entry Point
 │   │   │   ├── config/                          # AppConfig, DBConnection, DatabaseInitializer
 │   │   │   ├── dao/                             # ComplaintDAO, UserDAO, AssignmentDAO, HistoryDAO, etc.
-│   │   │   ├── model/                           # Domain Entities (Complaint, User, Assignment, etc.)
-│   │   │   ├── model/enums/                     # Role, ComplaintStatus, PriorityLevel, Category
-│   │   │   ├── security/                        # PasswordUtil (BCrypt), UserSession
-│   │   │   ├── service/                         # PriorityService, ComplaintService, UserService
-│   │   │   ├── ui/                              # LoginFrame, RegistrationDialog
-│   │   │   ├── ui/components/                   # BadgeCellRenderer, StatCard, ModernButton, DBStatusDialog
-│   │   │   ├── ui/student/                      # StudentDashboard, SubmitComplaintDialog, MyComplaintsPanel
-│   │   │   ├── ui/admin/                        # AdminDashboard, AllComplaintsPanel, ReportsPanel, StaffPanel
-│   │   │   ├── ui/staff/                        # StaffDashboard, AssignedComplaintsPanel, WorkProgressDialog
+│   │   │   ├── model/                           # Domain Entities & Records (DTOs)
+│   │   │   │   ├── enums/                       # Role, ComplaintStatus, PriorityLevel, Category
+│   │   │   │   ├── ActivityFeedItem.java        # Real-time activity log event record
+│   │   │   │   ├── StaffPerformanceDTO.java     # Technician productivity scorecard record
+│   │   │   │   ├── StaffRecommendationDTO.java  # Intelligent assignment candidate record
+│   │   │   │   └── StudentProfileDTO.java       # Student demographic & history scorecard
+│   │   │   ├── security/                        # PasswordUtil (BCrypt Cost 12), UserSession
+│   │   │   ├── service/                         # PriorityService, ComplaintService, UserService, DatabaseHealthService
+│   │   │   ├── ui/
+│   │   │   │   ├── LoginFrame.java              # Dual-panel enterprise authentication screen
+│   │   │   │   ├── RegistrationDialog.java      # Student self-registration dialog
+│   │   │   │   ├── theme/DesignSystem.java      # Midnight Navy palette tokens & Segoe UI typography
+│   │   │   │   ├── components/                  # ModernSidebar, CardPanel, StatCard, ModernButton, ToastNotification
+│   │   │   │   ├── charts/                      # DonutChartPanel, BarChartPanel, HorizontalBarChartPanel, TrendLineChartPanel
+│   │   │   │   ├── student/                     # StudentDashboard, SubmitComplaintDialog, MyComplaintsPanel, FeedbackDialog
+│   │   │   │   ├── admin/                       # AdminDashboard, AllComplaintsPanel, ReportsPanel, StaffManagementPanel,
+│   │   │   │   │                                # StudentManagementPanel, StudentProfileDialog, PrintableReportDialog, AuditLogsPanel
+│   │   │   │   └── staff/                       # StaffDashboard, AssignedComplaintsPanel, WorkProgressDialog, ResolutionDialog
 │   │   │   └── util/                            # ValidationUtil, CsvSanitizer
 │   │   └── resources/
 │   │       ├── db/schema.sql                    # MySQL Schema DDL
 │   │       ├── db/seed.sql                      # Initial Demo Accounts & Sample Data
 │   │       └── logback.xml                      # Logging configuration
-│   └── test/java/com/smartcampus/               # 60 Unit & Boundary Tests
+│   └── test/java/com/smartcampus/               # 69 Unit & Boundary Tests
 ├── docs/                                        # Architecture, ERD, Test Cases, User Guide, Demo Script
-├── packaging/                                   # Standalone 6.6MB Executable JAR
+├── packaging/                                   # Standalone Executable JAR
 └── scripts/                                     # Windows & Unix run / setup-db scripts
 ```
+
+---
+
+## 5. Elite Transformation — 10-Phase Competition Architecture
+
+The platform was systematically transformed through 10 engineering phases to elevate it into an enterprise-grade commercial product:
+
+| Phase | Module / Capability | Architectural Highlights |
+|---|---|---|
+| **Phase 1** | **Codebase & Architecture Preservation** | Non-breaking audit of domain logic, MySQL relational schema, and 100% preservation of passing test suites. Zero mockups or synthetic hardcoded data. |
+| **Phase 2** | **Premium Enterprise Design System** | Palette tokens (`#10172A` Midnight Navy, `#17233B` Deep Navy, `#4776FF` Electric Blue, `#8665FF` Violet, `#25C6DA` Cyan, `#F4F6FB` Canvas). Rounded anti-aliased `CardPanel` containers, non-blocking `ToastNotification` system, and `ModernSidebar` (collapsible 245px $\leftrightarrow$ 72px icon mode). |
+| **Phase 3** | **Campus Operations Command Center** | Real-time ticking clock widget, live MySQL ping latency telemetry chip, Critical Safety Incident alert banner with direct triage shortcut, 8 real-time KPI cards, pure Java 2D Graphics charts (`DonutChartPanel`, `TrendLineChartPanel`), Urgent Queue table, and a Live Activity Feed (`ActivityFeedPanel`). |
+| **Phase 4** | **Intelligent Complaint Management** | Multi-parameter filtering in `AllComplaintsPanel` (Category, Priority, Status, Building, Date Range, Safety Hazard toggle, keyword search), client-side pagination (10/15/25/50 per page). Interactive `ComplaintDetailsDialog` with 4-step lifecycle progression stepper (Submitted $\to$ Acknowledged $\to$ In Progress $\to$ Resolved) and factor explainability breakdown. |
+| **Phase 5** | **Smart Prioritization & Explainable Intelligence** | Deterministic 4-factor scoring formula $P = 20 \times (0.35S + 0.30R + 0.20A + 0.15I)$, SLA target resolution mapping (CRITICAL: 4h, HIGH: 24h, MEDIUM: 72h, LOW: 168h), detailed score breakdown calculation (`getDetailedFactorBreakdown()`), and tactical operational recommendations. |
+| **Phase 6** | **Staff Management & Workload Balancing** | Technician directory with real-time active task counters and workload badges (Available, Moderate, Heavy, Overloaded). Automated staff recommendation engine (`recommendStaffForComplaint()`) scoring candidates based on trade specialization (Electrician, Plumber, IT Network, Carpenter, etc.) and live task burdens. |
+| **Phase 7** | **Student Management Module** | Dedicated `StudentManagementPanel` directory with departmental filtering, search, and account status toggling. Modal `StudentProfileDialog` presenting student demographics, ticket summary cards, and complete historical complaint records. |
+| **Phase 8** | **Advanced Analytics & Printable Executive Reporting** | `ReportsPanel` visual dashboard featuring category distribution donut chart, department horizontal bar chart (`HorizontalBarChartPanel`), technician performance scorecard (assigned, resolved, avg hours, satisfaction rating). Official Printable Report generator (`PrintableReportDialog`) formatting executive briefs with institutional headers and native printer service dispatch. |
+| **Phase 9** | **Security, Audit & Live Database Health** | `AuditLogsPanel` with raw event inspector dialog, `DatabaseConnectionStatusDialog` featuring millisecond ping latency test and live schema record checklist across all core tables (`users`, `complaints`, `assignments`, `complaint_history`, `feedback`, `audit_logs`). BCrypt password hashing, PreparedStatement SQL injection defense, CSV formula neutralization. |
+| **Phase 10** | **Final Polish & Competition Readiness** | Dual-panel `LoginFrame` with show/hide password toggle, demo persona selector, and live database health telemetry. Uniform modern sidebar navigation across all three role portals (Student, Admin, Staff). 100% passing automated test suite (**69/69 tests**). Zero broken interactions. |
 
 ---
 
@@ -212,7 +216,8 @@ mvn test
 - **`PasswordUtilTest`**: 7 tests (BCrypt hashing, matching, non-matching, empty input rejection).
 - **`UserSessionTest`**: 4 tests (Authentication context, role enforcement, student ownership restrictions).
 - **`ValidationUtilTest`**: 12 tests (RFC email format, password complexity, RFC 4180 CSV escaping, spreadsheet formula neutralization).
-- **Total**: **60 Tests Run, 0 Failures, 0 Errors, 0 Skipped.**
+- **`ConfigurationResolutionTest`**: 9 tests (URL credential masking, configuration validation, property fallback preservation, live DB health check, live demo authentication).
+- **Total**: **69 Tests Run, 0 Failures, 0 Errors, 0 Skipped (100% Pass Rate).**
 
 Detailed test matrices are documented in [docs/test-cases.md](docs/test-cases.md).
 
@@ -233,7 +238,7 @@ Detailed test matrices are documented in [docs/test-cases.md](docs/test-cases.md
 
 - [docs/architecture.md](docs/architecture.md): System architecture, Mermaid tier diagrams, and threading model.
 - [docs/database-design.md](docs/database-design.md): Relational schema, Mermaid ERD, table dictionaries, and index designs.
-- [docs/test-cases.md](docs/test-cases.md): 60 automated test cases, boundary conditions, and test results.
+- [docs/test-cases.md](docs/test-cases.md): 69 automated test cases, boundary conditions, and test results.
 - [docs/user-guide.md](docs/user-guide.md): Comprehensive operations manual for Students, Administrators, and Staff.
 - [docs/demo-script.md](docs/demo-script.md): Step-by-step viva / examiner presentation walkthrough.
 

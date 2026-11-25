@@ -47,14 +47,15 @@ public class StudentProfilePanel extends JPanel {
                 BorderFactory.createEmptyBorder(20, 25, 20, 25)
         ));
 
-        // Header
         JPanel cardHeader = new JPanel(new BorderLayout());
         cardHeader.setOpaque(false);
-        JLabel title = new JLabel("My Student Profile");
+        User u = UserSession.getCurrentUser();
+        String roleTitle = (u != null && u.getRole() == com.smartcampus.model.enums.Role.STAFF) ? "Staff Profile & Credentials" : "Student Profile & Credentials";
+        JLabel title = new JLabel(roleTitle);
         title.setFont(new Font("Segoe UI", Font.BOLD, 18));
         title.setForeground(new Color(15, 23, 42));
 
-        JLabel subtitle = new JLabel("View and manage your campus contact details and password");
+        JLabel subtitle = new JLabel("View and manage your campus contact details and account security");
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         subtitle.setForeground(new Color(100, 116, 139));
 
@@ -62,7 +63,6 @@ public class StudentProfilePanel extends JPanel {
         cardHeader.add(subtitle, BorderLayout.SOUTH);
         card.add(cardHeader, BorderLayout.NORTH);
 
-        // Form
         JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
         GridBagConstraints gbc = new GridBagConstraints();
@@ -109,7 +109,6 @@ public class StudentProfilePanel extends JPanel {
 
         card.add(form, BorderLayout.CENTER);
 
-        // Actions
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         actions.setOpaque(false);
         btnChangePass = new ModernButton("Change Password", ModernButton.ButtonType.SECONDARY);
@@ -139,6 +138,10 @@ public class StudentProfilePanel extends JPanel {
         }
 
         User user = UserSession.getCurrentUser();
+        if (user == null) {
+            JOptionPane.showMessageDialog(this, "Session expired. Please sign in again.", "Session Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         progressBar.setVisible(true);
         btnSave.setEnabled(false);
 
@@ -163,5 +166,15 @@ public class StudentProfilePanel extends JPanel {
                 }
             }
         }.execute();
+    }
+
+    public void loadProfile() {
+        User u = UserSession.getCurrentUser();
+        if (u != null) {
+            txtName.setText(u.getFullName());
+            txtEmail.setText(u.getEmail());
+            txtDepartment.setText(u.getDepartment() != null ? u.getDepartment() : "");
+            txtPhone.setText(u.getPhone() != null ? u.getPhone() : "");
+        }
     }
 }

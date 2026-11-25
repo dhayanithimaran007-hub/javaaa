@@ -48,10 +48,8 @@ class UserSessionTest {
         User student = new User(101, "Alice Sharma", "alice@student.campus.edu", "hash", Role.STUDENT, "CS", "123", true, null, null);
         UserSession.login(student);
 
-        // Own complaint (studentId = 101)
         assertDoesNotThrow(() -> UserSession.checkStudentOwnership(101));
 
-        // Another student's complaint (studentId = 102) -> must throw SecurityException
         assertThrows(SecurityException.class, () -> UserSession.checkStudentOwnership(102));
     }
 

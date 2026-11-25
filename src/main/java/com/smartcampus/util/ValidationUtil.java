@@ -46,20 +46,17 @@ public class ValidationUtil {
         return value;
     }
 
-    /**
-     * Sanitizes CSV cell values to prevent CSV injection / formula execution in Excel/Calc.
-     */
     public static String escapeCsvCell(String value) {
         if (value == null) return "";
         String text = value.trim();
-        // Prevent formula injection if starting with =, +, -, @, \t, \r
+
         if (!text.isEmpty()) {
             char firstChar = text.charAt(0);
             if (firstChar == '=' || firstChar == '+' || firstChar == '-' || firstChar == '@' || firstChar == '\t' || firstChar == '\r') {
                 text = "'" + text;
             }
         }
-        // If contains commas, double quotes, or newlines, wrap in quotes and escape quotes
+
         if (text.contains(",") || text.contains("\"") || text.contains("\n") || text.contains("\r")) {
             text = "\"" + text.replace("\"", "\"\"") + "\"";
         }

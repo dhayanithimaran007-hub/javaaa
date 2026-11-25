@@ -1,6 +1,5 @@
 package com.smartcampus.service;
 
-import com.smartcampus.config.AppConfig;
 import com.smartcampus.config.DBConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +21,11 @@ public class DatabaseHealthService {
             "complaint_assignments",
             "complaint_status_history",
             "complaint_feedback",
-            "audit_logs"
+            "audit_logs",
+            "complaint_escalations",
+            "predictive_analysis",
+            "maintenance_risk_assessments",
+            "preventive_maintenance_recommendations"
     );
 
     public record HealthReport(
@@ -43,7 +46,6 @@ public class DatabaseHealthService {
             long latency = System.currentTimeMillis() - start;
             String catalog = conn.getCatalog();
 
-            // Check tables
             DatabaseMetaData metaData = conn.getMetaData();
             Set<String> existingTables = new HashSet<>();
             try (ResultSet tablesRs = metaData.getTables(catalog, null, "%", new String[]{"TABLE"})) {
@@ -63,5 +65,24 @@ public class DatabaseHealthService {
             logger.warn("Health check failed: {}", e.getMessage());
             return new HealthReport(false, latency, "unknown", 0, false, e.getMessage());
         }
+    }
+
+    public java.util.Map<String, Integer> getTableRecordCounts() {
+        java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+        try (Connection conn = DBConnection.getConnection();
+             Statement stmt = conn.createStatement()) {
+            for (String table : REQUIRED_TABLES) {
+                try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM " + table)) {
+                    if (rs.next()) {
+                        counts.put(table, rs.getInt(1));
+                    }
+                } catch (SQLException e) {
+                    counts.put(table, -1);
+                }
+            }
+        } catch (SQLException e) {
+            logger.warn("Failed to get table record counts: {}", e.getMessage());
+        }
+        return counts;
     }
 }

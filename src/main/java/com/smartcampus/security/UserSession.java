@@ -59,7 +59,7 @@ public class UserSession {
     public static synchronized void checkStudentOwnership(int studentId) {
         requireLoggedIn();
         if (currentUser.getRole() == Role.ADMIN) {
-            return; // Admins can view any student records
+            return;
         }
         if (currentUser.getRole() == Role.STUDENT && currentUser.getUserId() != studentId) {
             throw new SecurityException("Access denied. You cannot access another student's complaints.");

@@ -53,11 +53,18 @@ graph TD
 ### 2. Layered Responsibilities
 
 #### Presentation Layer (`com.smartcampus.ui.*`)
-- Built exclusively with Java Swing (`JFrame`, `JPanel`, `JTable`, `JDialog`, `JTextField`, `JTextArea`, `JComboBox`).
-- Styled using **FlatLaf** (`FlatLightLaf`) for a consistent, modern, clean aesthetic.
-- Custom UI renderers (`BadgeCellRenderer`) render rounded colored pill badges for priority levels (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`) and lifecycle statuses (`SUBMITTED`, `ACKNOWLEDGED`, `IN_PROGRESS`, `RESOLVED`, `REJECTED`).
-- Dashboard metric cards (`StatCard`) provide visual KPI summaries with left accent bars and bold typography.
-- Background threads (`SwingWorker`) handle all database operations, ensuring the Swing Event Dispatch Thread (EDT) never stutters or freezes.
+- Built exclusively with native Java Swing (`JFrame`, `JPanel`, `JTable`, `JDialog`, `JTextField`, `JTextArea`, `JComboBox`).
+- Styled using **FlatLaf** (`FlatLightLaf`) paired with the centralized `DesignSystem` token palette (Midnight Navy `#10172A`, Deep Navy `#17233B`, Electric Blue `#4776FF`, Violet `#8665FF`, Cyan `#25C6DA`, Canvas `#F4F6FB`) and Segoe UI typography hierarchy.
+- Custom rounded container panels (`CardPanel`) with subtle drop shadows and anti-aliased border rendering.
+- Collapsible navigation drawer (`ModernSidebar`) featuring dynamic width transitions (245px expanded $\leftrightarrow$ 72px icon-only), active indicator accents, and notification badges.
+- Native **Java 2D Graphics Charts** engineered without third-party chart bloat:
+  - `TrendLineChartPanel`: Area chart with gradient fill for 14-day complaint volume dynamics.
+  - `DonutChartPanel`: Interactive category donut chart with hover slice highlights and percentage legends.
+  - `HorizontalBarChartPanel`: Clean horizontal bars for cross-departmental volume comparisons.
+  - `BarChartPanel`: Vertical bar chart for lifecycle status distributions.
+- Non-blocking floating toast system (`ToastNotification`) delivering auto-dismissing notifications (Success, Info, Warning, Error).
+- Comprehensive operations dialogs: `ComplaintDetailsDialog` with 4-step lifecycle stepper and factor explainability breakdown, `StudentProfileDialog`, `PrintableReportDialog`, `DatabaseConnectionStatusDialog`, and `AssignStaffDialog` with one-click recommendation banner.
+- Background worker threads (`SwingWorker`) handle 100% of database queries, ensuring the Swing Event Dispatch Thread (EDT) never stutters or freezes.
 
 #### Security & Context Layer (`com.smartcampus.security.*`, `com.smartcampus.util.*`)
 - **`UserSession`**: Thread-safe authentication holder tracking the authenticated campus user, enforcing role-based permissions (`requireRole`), and restricting student access to their own complaints (`checkStudentOwnership`).
@@ -65,9 +72,10 @@ graph TD
 - **`ValidationUtil`**: Enforces strict RFC email formatting, strong password complexity rules, numerical boundary validations, and spreadsheet formula neutralization (`'=`, `'+`, `'-`, `'@`) to prevent CSV injection attacks.
 
 #### Service Layer (`com.smartcampus.service.*`)
-- **`PriorityService`**: Deterministic scoring engine executing $P = 20 \times (0.35S + 0.30R + 0.20A + 0.15I)$. It calculates authoritative scores on the application side and flags safety overrides ($R \ge 4$, $S=5$ with hazard, or security categories) for human review.
-- **`ComplaintService`**: Orchestrates complaint lodging, assignment dispatch, progress updates, resolutions, rejections, feedback submission, and CSV reporting with ACID transactional guarantees.
-- **`UserService`**: Manages authentication, student self-registration (strictly locked to `STUDENT`), admin-controlled staff provisioning, password changes, and audit logging.
+- **`PriorityService`**: Deterministic scoring engine executing $P = 20 \times (0.35S + 0.30R + 0.20A + 0.15I)$. Generates granular factor breakdown (`getDetailedFactorBreakdown()`), SLA resolution targets (4h to 168h), tactical operational actions (`getRecommendedAction()`), and safety overrides ($R \ge 4$, $S=5$ with hazard, or security categories).
+- **`ComplaintService`**: Orchestrates complaint lodging, assignment dispatch, progress updates, resolutions, rejections, feedback submission, and CSV reporting with ACID transactional guarantees. Implements the **Intelligent Staff Recommendation Engine** (`recommendStaffForComplaint()`) that scores candidates by matching complaint categories to trade specializations and evaluating real-time active technician workload burdens.
+- **`UserService`**: Manages authentication, student self-registration (strictly locked to `STUDENT`), admin-controlled staff provisioning, student directory profile generation, active task workload mapping, password changes, and audit logging.
+- **`DatabaseHealthService`**: Performs live ping checks, calculates query response latency, verifies database catalog metadata, and audits record counts across all core tables.
 
 #### Data Access Layer (`com.smartcampus.dao.*`)
 - Pure JDBC implementation utilizing `PreparedStatement` with parameterized placeholders to eliminate SQL injection vulnerabilities.

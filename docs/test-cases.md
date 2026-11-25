@@ -5,8 +5,8 @@
 
 - **Test Framework**: JUnit 5 (Jupiter 5.10.2) + Maven Surefire 3.2.5
 - **Compiler Target**: Java 25 (Tested on Java 25.0.2 runtime)
-- **Total Tests Executed**: 60
-- **Passed**: 60
+- **Total Tests Executed**: 69
+- **Passed**: 69
 - **Failed**: 0
 - **Errors**: 0
 - **Skipped**: 0
@@ -92,3 +92,19 @@ Formula: $P = 20 \times (0.35S + 0.30R + 0.20A + 0.15I)$
 | `TC-VAL-07` | Formula payload `+12345` | Escaped with leading quote: `'+12345` | PASS |
 | `TC-VAL-08` | Text with comma `Science Block A, Room 101` | Enclosed in quotes: `"Science Block A, Room 101"` | PASS |
 | `TC-VAL-09` | Text with double quotes `Lab "Super" PC` | RFC 4180 escaped: `"Lab ""Super"" PC"` | PASS |
+
+---
+
+### 6. Configuration Resolution & Database Telemetry Matrix (`ConfigurationResolutionTest`)
+
+| Test ID | Component / Scenario | Verification Detail | Expected Outcome | Status |
+|---|---|---|---|---|
+| `TC-CONF-01` | `DBConnection.maskUrl` | Masks passwords in URL query and authority strings | Returns string with `password=***` and `user:***@` | PASS |
+| `TC-CONF-02` | `DBConnection.validateConfiguration` | Rejects missing or blank database URL | Throws `SQLException` ("URL is not configured") | PASS |
+| `TC-CONF-03` | `DBConnection.validateConfiguration` | Rejects missing or blank database username | Throws `SQLException` ("username is not configured") | PASS |
+| `TC-CONF-04` | `DBConnection.validateConfiguration` | Rejects missing, blank, or placeholder password | Throws `SQLException` ("password is not configured") | PASS |
+| `TC-CONF-05` | `DBConnection.validateConfiguration` | Validates valid parameters | Completes without throwing exception | PASS |
+| `TC-CONF-06` | `AppConfig` | Resolves and dynamically updates in-memory credentials | Correctly updates and reloads properties | PASS |
+| `TC-CONF-07` | `AppConfig` | Empty/blank properties do not overwrite non-empty defaults | Preserves pre-configured default values | PASS |
+| `TC-CONF-08` | `DatabaseHealthService` | Live MySQL connectivity check | Returns `connected=true`, `schemaReady=true` | PASS |
+| `TC-CONF-09` | `UserService` | Live demo account authentication | Authenticates `admin@campus.edu` with Role `ADMIN` | PASS |

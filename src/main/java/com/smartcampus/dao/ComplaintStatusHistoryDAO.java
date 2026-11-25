@@ -3,8 +3,6 @@ package com.smartcampus.dao;
 import com.smartcampus.config.DBConnection;
 import com.smartcampus.model.ComplaintStatusHistory;
 import com.smartcampus.model.enums.ComplaintStatus;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ComplaintStatusHistoryDAO {
-    private static final Logger logger = LoggerFactory.getLogger(ComplaintStatusHistoryDAO.class);
 
     public ComplaintStatusHistory record(ComplaintStatusHistory history, Connection conn) throws SQLException {
         String sql = "INSERT INTO complaint_status_history (complaint_id, changed_by, old_status, new_status, remarks) " +

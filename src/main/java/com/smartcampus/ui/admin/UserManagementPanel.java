@@ -1,12 +1,15 @@
 package com.smartcampus.ui.admin;
 
 import com.smartcampus.model.User;
-import com.smartcampus.security.UserSession;
 import com.smartcampus.service.UserService;
+import com.smartcampus.ui.components.CardPanel;
 import com.smartcampus.ui.components.ModernButton;
+import com.smartcampus.ui.components.ToastNotification;
+import com.smartcampus.ui.theme.DesignSystem;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -14,13 +17,12 @@ import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,21 +43,16 @@ public class UserManagementPanel extends JPanel {
     private final List<User> currentUsers = new ArrayList<>();
 
     public UserManagementPanel() {
-        setLayout(new BorderLayout(10, 10));
-        setBackground(new Color(248, 250, 252));
+        setLayout(new BorderLayout(12, 12));
+        setBackground(DesignSystem.BG_CANVAS);
         setBorder(BorderFactory.createEmptyBorder(18, 20, 18, 20));
 
-        // Filter Bar
-        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
-        topBar.setBackground(Color.WHITE);
-        topBar.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(226, 232, 240)),
-                BorderFactory.createEmptyBorder(6, 12, 6, 12)
-        ));
+        CardPanel topBar = new CardPanel(new FlowLayout(FlowLayout.LEFT, 12, 10));
+        topBar.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
 
         topBar.add(new JLabel("Search Users:"));
-        txtSearch = new JTextField(12);
-        txtSearch.setPreferredSize(new Dimension(140, 30));
+        txtSearch = new JTextField(14);
+        txtSearch.setPreferredSize(new Dimension(160, 32));
         topBar.add(txtSearch);
 
         topBar.add(new JLabel("Role:"));
@@ -66,44 +63,39 @@ public class UserManagementPanel extends JPanel {
         cmbActiveFilter = new JComboBox<>(new String[]{"ALL", "Active Only", "Inactive Only"});
         topBar.add(cmbActiveFilter);
 
-        btnRefresh = new ModernButton("Filter Users", ModernButton.ButtonType.SECONDARY);
+        btnRefresh = new ModernButton("Filter Directory", ModernButton.ButtonType.PRIMARY);
         topBar.add(btnRefresh);
 
         add(topBar, BorderLayout.NORTH);
 
-        // Center Table
-        String[] cols = {"User ID", "Full Name", "Email Address", "Role", "Department", "Contact Phone", "Status", "Registered On"};
+        String[] cols = {"User ID", "Full Name", "Campus Email", "Role", "Department", "Contact Phone", "Account Status", "Registered On"};
         tableModel = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
         tableUsers = new JTable(tableModel);
-        tableUsers.setRowHeight(32);
-        tableUsers.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tableUsers.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        tableUsers.setRowHeight(34);
+        tableUsers.setFont(DesignSystem.FONT_SMALL);
+        tableUsers.getTableHeader().setFont(DesignSystem.FONT_SMALL_BOLD);
 
-        tableUsers.getColumnModel().getColumn(0).setPreferredWidth(50);
-        tableUsers.getColumnModel().getColumn(1).setPreferredWidth(160);
-        tableUsers.getColumnModel().getColumn(2).setPreferredWidth(180);
+        tableUsers.getColumnModel().getColumn(0).setPreferredWidth(55);
+        tableUsers.getColumnModel().getColumn(1).setPreferredWidth(170);
+        tableUsers.getColumnModel().getColumn(2).setPreferredWidth(190);
         tableUsers.getColumnModel().getColumn(3).setPreferredWidth(90);
-        tableUsers.getColumnModel().getColumn(4).setPreferredWidth(140);
+        tableUsers.getColumnModel().getColumn(4).setPreferredWidth(150);
         tableUsers.getColumnModel().getColumn(5).setPreferredWidth(110);
-        tableUsers.getColumnModel().getColumn(6).setPreferredWidth(80);
+        tableUsers.getColumnModel().getColumn(6).setPreferredWidth(95);
         tableUsers.getColumnModel().getColumn(7).setPreferredWidth(120);
 
-        JScrollPane scrollPane = new JScrollPane(tableUsers);
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(226, 232, 240)));
-
-        JPanel centerPanel = new JPanel(new BorderLayout());
+        CardPanel centerCard = new CardPanel(new BorderLayout());
         progressBar = new JProgressBar();
         progressBar.setIndeterminate(true);
         progressBar.setVisible(false);
-        centerPanel.add(progressBar, BorderLayout.NORTH);
-        centerPanel.add(scrollPane, BorderLayout.CENTER);
+        centerCard.add(progressBar, BorderLayout.NORTH);
+        centerCard.add(new JScrollPane(tableUsers), BorderLayout.CENTER);
 
-        add(centerPanel, BorderLayout.CENTER);
+        add(centerCard, BorderLayout.CENTER);
 
-        // Bottom Action Bar
         JPanel bottomBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
         bottomBar.setOpaque(false);
 
@@ -155,16 +147,16 @@ public class UserManagementPanel extends JPanel {
                                 u.getUserId(),
                                 u.getFullName(),
                                 u.getEmail(),
-                                u.getRole().getDisplayName(),
-                                u.getDepartment() != null ? u.getDepartment() : "—",
-                                u.getPhone() != null ? u.getPhone() : "—",
-                                u.isActive() ? "Active" : "Inactive",
+                                u.getRole().name(),
+                                u.getDepartment() != null ? u.getDepartment() : "General",
+                                u.getPhone() != null && !u.getPhone().isBlank() ? u.getPhone() : "-",
+                                u.isActive() ? "ACTIVE" : "INACTIVE",
                                 u.getCreatedAt() != null ? dateFormat.format(u.getCreatedAt()) : ""
                         });
                     }
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(UserManagementPanel.this,
-                            "Failed to load user accounts: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                            "Failed to load user directory: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
         }.execute();
@@ -173,30 +165,43 @@ public class UserManagementPanel extends JPanel {
     private void handleToggleActive() {
         int row = tableUsers.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select an account to toggle active state.", "Selection Required", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Please select an account to toggle.", "Select Account", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
-        User u = currentUsers.get(row);
-        if (u.getUserId() == UserSession.getCurrentUser().getUserId()) {
-            JOptionPane.showMessageDialog(this, "You cannot deactivate your own current administrator account.",
-                    "Operation Blocked", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
+        User selected = currentUsers.get(row);
+        boolean targetStatus = !selected.isActive();
+        String actionName = targetStatus ? "activate" : "deactivate";
 
-        boolean newActive = !u.isActive();
-        String actionName = newActive ? "Activate" : "Deactivate";
         int confirm = JOptionPane.showConfirmDialog(this,
-                actionName + " account for " + u.getFullName() + " (" + u.getEmail() + ")?",
-                "Confirm " + actionName, JOptionPane.YES_NO_OPTION);
+                "Are you sure you want to " + actionName + " account: " + selected.getEmail() + " (" + selected.getFullName() + ")?",
+                "Confirm Account Authorization Change", JOptionPane.YES_NO_OPTION);
 
         if (confirm == JOptionPane.YES_OPTION) {
-            try {
-                userService.toggleUserActive(u.getUserId(), newActive);
-                loadUsers();
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Failed to update account: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
+            btnToggleActive.setEnabled(false);
+            progressBar.setVisible(true);
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    userService.toggleUserActive(selected.getUserId(), targetStatus);
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    btnToggleActive.setEnabled(true);
+                    progressBar.setVisible(false);
+                    try {
+                        get();
+                        JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(UserManagementPanel.this);
+                        ToastNotification.showSuccess(parent, "Account " + selected.getEmail() + " " + actionName + "d.");
+                        loadUsers();
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(UserManagementPanel.this,
+                                "Failed to toggle account status: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }.execute();
         }
     }
 }

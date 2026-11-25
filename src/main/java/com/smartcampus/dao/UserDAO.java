@@ -3,8 +3,6 @@ package com.smartcampus.dao;
 import com.smartcampus.config.DBConnection;
 import com.smartcampus.model.User;
 import com.smartcampus.model.enums.Role;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -16,7 +14,6 @@ import java.util.List;
 import java.util.Optional;
 
 public class UserDAO {
-    private static final Logger logger = LoggerFactory.getLogger(UserDAO.class);
 
     public Optional<User> findByEmail(String email) throws SQLException {
         String sql = "SELECT user_id, full_name, email, password_hash, role, department, phone, active, created_at, updated_at " +
@@ -159,6 +156,91 @@ public class UserDAO {
             }
         }
         return staffList;
+    }
+
+    public java.util.Map<Integer, Integer> getStaffWorkloadMap() throws SQLException {
+        java.util.Map<Integer, Integer> map = new java.util.HashMap<>();
+        String sql = "SELECT ca.staff_id, COUNT(DISTINCT ca.complaint_id) as active_cnt " +
+                     "FROM complaint_assignments ca " +
+                     "JOIN complaints c ON ca.complaint_id = c.complaint_id " +
+                     "WHERE ca.is_active = TRUE AND c.status NOT IN ('RESOLVED', 'REJECTED') " +
+                     "GROUP BY ca.staff_id";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                map.put(rs.getInt("staff_id"), rs.getInt("active_cnt"));
+            }
+        }
+        return map;
+    }
+
+    public com.smartcampus.model.StudentProfileDTO getStudentProfile(int studentId) throws SQLException {
+        User student = findById(studentId)
+                .orElseThrow(() -> new IllegalArgumentException("Student not found for ID: " + studentId));
+
+        int total = 0;
+        int resolved = 0;
+        int inProgress = 0;
+        double avgRating = 0.0;
+
+        String statsSql = "SELECT " +
+                          "COUNT(*) as total, " +
+                          "COUNT(CASE WHEN status = 'RESOLVED' THEN 1 END) as resolved_cnt, " +
+                          "COUNT(CASE WHEN status = 'IN_PROGRESS' THEN 1 END) as prog_cnt " +
+                          "FROM complaints WHERE student_id = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(statsSql)) {
+            ps.setInt(1, studentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    total = rs.getInt("total");
+                    resolved = rs.getInt("resolved_cnt");
+                    inProgress = rs.getInt("prog_cnt");
+                }
+            }
+        }
+
+        String ratingSql = "SELECT AVG(rating) FROM complaint_feedback WHERE student_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(ratingSql)) {
+            ps.setInt(1, studentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    avgRating = rs.getDouble(1);
+                }
+            }
+        }
+
+        ComplaintDAO complaintDAO = new ComplaintDAO();
+        List<com.smartcampus.model.Complaint> complaints = complaintDAO.findComplaints(
+                studentId, null, null, null, null, null, null, null, "date", false);
+
+        return new com.smartcampus.model.StudentProfileDTO(student, total, resolved, inProgress, avgRating, complaints);
+    }
+
+    public List<User> findActiveDemoAccounts() throws SQLException {
+        String sql = "SELECT user_id, full_name, email, role, department " +
+                     "FROM users WHERE active = TRUE AND role IN ('ADMIN', 'STAFF', 'STUDENT') " +
+                     "ORDER BY FIELD(role, 'ADMIN', 'STAFF', 'STUDENT'), user_id";
+        List<User> list = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                User u = new User();
+                u.setUserId(rs.getInt("user_id"));
+                u.setFullName(rs.getString("full_name"));
+                u.setEmail(rs.getString("email"));
+                u.setRole(Role.fromString(rs.getString("role")));
+                u.setDepartment(rs.getString("department"));
+                u.setActive(true);
+                list.add(u);
+            }
+        }
+        return list;
     }
 
     private User mapRowToUser(ResultSet rs) throws SQLException {

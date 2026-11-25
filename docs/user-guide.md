@@ -62,35 +62,62 @@ Upon startup, the **LoginFrame** appears:
 
 ### 4. Administrator Control Center Guide
 
-#### A. Dashboard Overview
-- Real-time KPI statistics queried live from MySQL.
-- **High-Priority & Safety-Critical Action Queue**: Lists urgent issues requiring staff dispatch.
-- Double-click any entry to view full details.
+#### A. Command Center Dashboard
+- **Telemetry & Safety Banner**: Live ticking system clock, real-time MySQL ping latency badge, and high-visibility **Critical Safety Alert Banner** showing active life-safety incidents with a one-click triage shortcut.
+- **8 Live KPI Metric Cards**: Total Complaints, Submitted (New), Acknowledged, In Progress, Resolved, Critical Safety, Overdue (SLA Breached), and Mean Resolution Time in Hours.
+- **Interactive Visualizations**:
+  - **14-Day Trend Line Chart**: Java 2D gradient area chart depicting complaint intake dynamics.
+  - **Category Donut Chart**: Hover-interactive donut chart displaying category proportions and legends.
+- **High-Priority & Safety Action Queue**: Immediate access to complaints requiring urgent dispatch.
+- **Live Activity Feed**: Real-time chronological event stream tracking new submissions, technician dispatches, status progressions, and issue resolutions.
 
 #### B. All Complaints & Dispatch Management
 - Navigate to **"All Complaints"**.
-- Use the filter bar to isolate categories, buildings, or check **"Safety Hazards Only"**.
-- **Assign to Staff**: Select a complaint and click **"Assign to Staff"**. Choose an active technician from the dropdown, add dispatch instructions, and confirm.
-- **Reject Complaint**: Select a complaint and click **"Reject Complaint"**. Provide a mandatory rejection explanation.
-- **Reopen Complaint**: Select a resolved/rejected complaint and click **"Reopen Complaint"** to return it to active progress.
+- **Multi-Parameter Filter Toolbar**:
+  - Category, Priority, and Status dropdowns.
+  - Campus Building filter (dynamically loaded from database).
+  - Date Range filter (All Time, Today, Last 7 Days, Last 30 Days).
+  - **Safety Hazards Only** quick toggle.
+  - Keyword search across Title, Description, Building, Room, and Student Name.
+  - Client-side pagination (10, 15, 25, or 50 items per page with Previous/Next controls).
+- **Complaint Details Modal**: Double-click any row to open the inspector:
+  - **Lifecycle Progression Stepper**: Visual 4-step stepper (Submitted $\to$ Acknowledged $\to$ In Progress $\to$ Resolved) with completion checks.
+  - **Smart Prioritization Explainability**: Granular mathematical breakdown showing $S, R, A, I$ factor scores, relative weights, composite score, SLA deadline, and tactical recommendation.
+  - **Chronological History & Audit Log**: Verifiable timeline of all state transitions and technician work notes.
+- **Intelligent Staff Assignment**: Click **"Assign to Staff"**:
+  - Review the **Automated Staff Recommendation Banner** displaying the best-matched technician based on trade specialization and active workload.
+  - Click **"Apply Recommended Staff"** or choose another technician from the workload-badged dropdown.
+- **Administrative Override & Reopen**: Reject complaints with mandatory reason or reopen resolved issues for rework.
 
-#### C. Staff Management
+#### C. Staff Management & Workload Balancing
 - Navigate to **"Staff Directory"**.
-- Click **"+ Add Maintenance Staff"** to provision a technician account with trade department (e.g., Electrical, Plumbing).
-- Use **"Activate / Deactivate Staff"** to toggle active employment status.
+- View technician directory with real-time active task counters and workload badges:
+  - `Available` (0–1 tasks)
+  - `Moderate` (2–3 tasks)
+  - `Heavy` (4–5 tasks)
+  - `Overloaded` (6+ tasks)
+- Filter by trade specialization (Electrical, Plumbing, HVAC, Network, Carpentry, General).
+- Provision new maintenance technician accounts with trade specialization.
+- Toggle active employment status with automatic assignment reassignment checks.
 
-#### D. User Directory
-- View all campus accounts across `STUDENT`, `STAFF`, and `ADMIN` roles.
-- Filter by role and active status, or search by name/email.
-- Deactivate accounts without deleting historical data.
+#### D. Student Management Directory
+- Navigate to **"Student Directory"**.
+- Search by student ID, name, email, or department.
+- Filter students by academic department and account active status.
+- **Student Profile Inspector**: Click **"View Student Profile"** to view demographic details, statistical summary cards (Total Lodged, Active, Resolved, Satisfaction Avg), and complete personal grievance history.
 
-#### E. Analytics & CSV Export
-- Navigate to **"Analytics & CSV Export"**.
-- Inspect category breakdown, lifecycle status distributions, resolution percentage, and average turnaround time.
-- Click **"Export Authorized Report (CSV)"** to save a formula-sanitized spreadsheet report.
+#### E. Advanced Analytics & Printable Executive Reporting
+- Navigate to **"Analytics & Reports"**.
+- Visual performance dashboards:
+  - Category volume distribution (Java 2D Donut Chart).
+  - Department-wise grievance distribution (Java 2D Horizontal Bar Chart).
+  - Technician productivity scorecard (Assigned, Resolved, Mean Hours, Satisfaction Rating).
+- **Export CSV**: Secure, formula-sanitized spreadsheet export preventing CSV injection.
+- **Print Executive Report**: Click **"Print Executive Report"** to open a beautifully formatted institutional briefing complete with formal university header, summary KPI table, technician performance matrix, and official sign-off blocks. Click **"Print Report"** to send directly to native printer or export to PDF.
 
-#### F. Audit Logs
-- Navigate to **"Audit Trails"** to inspect administrative activities (logins, assignments, status changes, user activations).
+#### F. Audit Logs & System Health
+- Navigate to **"Audit Trails"** to inspect system-wide audit events. Click **"View Details"** to open the raw event payload inspector.
+- Click **"Database Settings"** from the login screen or command center to view live database latency, catalog version, and table record count checklist.
 
 ---
 

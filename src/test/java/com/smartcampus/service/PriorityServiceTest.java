@@ -22,8 +22,7 @@ class PriorityServiceTest {
     @Test
     @DisplayName("Minimum possible inputs should yield LOW priority score of 14.0")
     void testMinimumScoreLowPriority() {
-        // S=1, R=0, A=1 (from 1 person), I=1
-        // P = 20 * (0.35*1 + 0.30*0 + 0.20*1 + 0.15*1) = 20 * 0.70 = 14.0
+
         PriorityService.PriorityResult res = priorityService.calculatePriority(1, 0, 1, 1, "Other");
         assertEquals(14.0, res.score(), 0.01);
         assertEquals(PriorityLevel.LOW, res.priorityLevel());
@@ -33,8 +32,7 @@ class PriorityServiceTest {
     @Test
     @DisplayName("Maximum possible inputs should yield CRITICAL priority score of 100.0")
     void testMaximumScoreCriticalPriority() {
-        // S=5, R=5, A=5 (from 500 people), I=5
-        // P = 20 * (0.35*5 + 0.30*5 + 0.20*5 + 0.15*5) = 20 * 5.0 = 100.0
+
         PriorityService.PriorityResult res = priorityService.calculatePriority(5, 5, 500, 5, "Electrical");
         assertEquals(100.0, res.score(), 0.01);
         assertEquals(PriorityLevel.CRITICAL, res.priorityLevel());
@@ -44,8 +42,7 @@ class PriorityServiceTest {
     @Test
     @DisplayName("MEDIUM priority classification test")
     void testMediumPriority() {
-        // S=2, R=1, A=2 (from 10 people), I=2
-        // P = 20 * (0.35*2 + 0.30*1 + 0.20*2 + 0.15*2) = 20 * (0.70 + 0.30 + 0.40 + 0.30) = 20 * 1.70 = 34.0
+
         PriorityService.PriorityResult res = priorityService.calculatePriority(2, 1, 10, 2, "Plumbing and Water Supply");
         assertEquals(34.0, res.score(), 0.01);
         assertEquals(PriorityLevel.MEDIUM, res.priorityLevel());
@@ -55,8 +52,7 @@ class PriorityServiceTest {
     @Test
     @DisplayName("HIGH priority classification test")
     void testHighPriority() {
-        // S=4, R=2, A=4 (from 100 people), I=3
-        // P = 20 * (0.35*4 + 0.30*2 + 0.20*4 + 0.15*3) = 20 * (1.40 + 0.60 + 0.80 + 0.45) = 20 * 3.25 = 65.0
+
         PriorityService.PriorityResult res = priorityService.calculatePriority(4, 2, 100, 3, "Internet and Wi-Fi");
         assertEquals(65.0, res.score(), 0.01);
         assertEquals(PriorityLevel.HIGH, res.priorityLevel());
@@ -84,7 +80,7 @@ class PriorityServiceTest {
     @Test
     @DisplayName("Safety risk override: Safety risk >= 4 must flag safety critical even if isolated to 1 person")
     void testSafetyRiskOverrideHighRisk() {
-        // Low people count, low operational impact, but safety risk is 4
+
         PriorityService.PriorityResult res = priorityService.calculatePriority(2, 4, 1, 1, "Electrical");
         assertTrue(res.isSafetyCritical(), "Safety risk >= 4 must be flagged safety critical");
     }
@@ -129,5 +125,45 @@ class PriorityServiceTest {
     void testInvalidOperationalImpact(int impact) {
         assertThrows(IllegalArgumentException.class, () ->
                 priorityService.calculatePriority(3, 1, 10, impact, "Other"));
+    }
+
+    @Test
+    @DisplayName("Intelligent Lighting Classification: classroom vs corridor/staircase vs emergency exit vs short circuit")
+    void testIntelligentLightingAndElectricalClassification() {
+
+        PriorityService.PriorityResult classroom = priorityService.calculatePriority(
+                2, 1, 50, 3, "Electrical",
+                "Not working of Lights",
+                "Tubelight which was located near the C section table was not working.",
+                "ANEW 202");
+        assertEquals(41.0, classroom.score(), 0.01);
+        assertEquals(PriorityLevel.MEDIUM, classroom.priorityLevel());
+        assertFalse(classroom.isSafetyCritical(), "Routine classroom tubelight failure must NOT be falsely marked safety-critical");
+
+        PriorityService.PriorityResult corridor = priorityService.calculatePriority(
+                2, 1, 20, 2, "Electrical",
+                "Corridor and Staircase Lights Out",
+                "Lights on 2nd floor corridor staircase are not working, creating dark walkway",
+                "2nd Floor Staircase");
+        assertEquals(PriorityLevel.HIGH, corridor.priorityLevel());
+        assertTrue(corridor.score() >= 50.0);
+
+        PriorityService.PriorityResult exitLight = priorityService.calculatePriority(
+                2, 1, 15, 2, "Electrical",
+                "Emergency exit lighting failure",
+                "Emergency exit sign light is dead near north stairwell",
+                "North Exit");
+        assertEquals(PriorityLevel.CRITICAL, exitLight.priorityLevel());
+        assertTrue(exitLight.score() >= 75.0);
+        assertTrue(exitLight.isSafetyCritical());
+
+        PriorityService.PriorityResult shortCircuit = priorityService.calculatePriority(
+                3, 2, 10, 2, "Electrical",
+                "Electrical short circuit in DB panel",
+                "Sparking wires and burning smell near corridor switchboard",
+                "Lab 105");
+        assertEquals(PriorityLevel.CRITICAL, shortCircuit.priorityLevel());
+        assertTrue(shortCircuit.score() >= 80.0);
+        assertTrue(shortCircuit.isSafetyCritical());
     }
 }

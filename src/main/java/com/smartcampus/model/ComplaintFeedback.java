@@ -7,7 +7,7 @@ public class ComplaintFeedback {
     private int complaintId;
     private int studentId;
     private String studentName;
-    private int rating; // 1 to 5
+    private int rating;
     private String comments;
     private Timestamp createdAt;
 

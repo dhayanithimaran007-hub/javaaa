@@ -26,7 +26,6 @@ public class Complaint {
     private Timestamp updatedAt;
     private Timestamp resolvedAt;
 
-    // Optional joined / associated fields
     private Integer assignedStaffId;
     private String assignedStaffName;
     private String latestRemarks;

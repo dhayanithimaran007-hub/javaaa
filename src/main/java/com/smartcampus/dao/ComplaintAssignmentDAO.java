@@ -2,8 +2,6 @@ package com.smartcampus.dao;
 
 import com.smartcampus.config.DBConnection;
 import com.smartcampus.model.ComplaintAssignment;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,7 +13,6 @@ import java.util.List;
 import java.util.Optional;
 
 public class ComplaintAssignmentDAO {
-    private static final Logger logger = LoggerFactory.getLogger(ComplaintAssignmentDAO.class);
 
     public ComplaintAssignment assign(int complaintId, int staffId, int assignedBy,
                                       String notes, Connection conn) throws SQLException {
@@ -23,14 +20,13 @@ public class ComplaintAssignmentDAO {
         Connection actualConn = isLocalConn ? DBConnection.getConnection() : conn;
 
         try {
-            // First deactivate previous active assignments for this complaint
+
             String deactivateSql = "UPDATE complaint_assignments SET is_active = FALSE WHERE complaint_id = ?";
             try (PreparedStatement ps = actualConn.prepareStatement(deactivateSql)) {
                 ps.setInt(1, complaintId);
                 ps.executeUpdate();
             }
 
-            // Insert new assignment
             String insertSql = "INSERT INTO complaint_assignments (complaint_id, staff_id, assigned_by, notes, is_active) " +
                                "VALUES (?, ?, ?, ?, TRUE)";
             ComplaintAssignment assignment = new ComplaintAssignment();
@@ -54,6 +50,20 @@ public class ComplaintAssignmentDAO {
                 }
             }
             return assignment;
+        } finally {
+            if (isLocalConn && actualConn != null) {
+                actualConn.close();
+            }
+        }
+    }
+
+    public void deactivateForComplaint(int complaintId, Connection conn) throws SQLException {
+        boolean isLocalConn = (conn == null);
+        Connection actualConn = isLocalConn ? DBConnection.getConnection() : conn;
+        String sql = "UPDATE complaint_assignments SET is_active = FALSE WHERE complaint_id = ? AND is_active = TRUE";
+        try (PreparedStatement ps = actualConn.prepareStatement(sql)) {
+            ps.setInt(1, complaintId);
+            ps.executeUpdate();
         } finally {
             if (isLocalConn && actualConn != null) {
                 actualConn.close();

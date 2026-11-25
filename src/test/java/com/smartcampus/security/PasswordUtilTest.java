@@ -32,7 +32,7 @@ class PasswordUtilTest {
     void testVerifyNonMatchingPassword() {
         String hash = PasswordUtil.hashPassword("CorrectPassword123");
         assertFalse(PasswordUtil.verifyPassword("WrongPassword123", hash));
-        assertFalse(PasswordUtil.verifyPassword("correctpassword123", hash)); // case sensitivity
+        assertFalse(PasswordUtil.verifyPassword("correctpassword123", hash));
     }
 
     @ParameterizedTest

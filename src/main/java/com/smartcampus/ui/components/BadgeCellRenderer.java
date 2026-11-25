@@ -1,7 +1,11 @@
 package com.smartcampus.ui.components;
 
 import com.smartcampus.model.enums.ComplaintStatus;
+import com.smartcampus.model.enums.EscalationLevel;
 import com.smartcampus.model.enums.PriorityLevel;
+import com.smartcampus.model.enums.RecommendationStatus;
+import com.smartcampus.model.enums.RiskLevel;
+import com.smartcampus.model.enums.SlaStatus;
 
 import javax.swing.JLabel;
 import javax.swing.JTable;
@@ -40,25 +44,59 @@ public class BadgeCellRenderer extends JLabel implements TableCellRenderer {
         String text = value.toString();
         setText(text);
 
-        // Check if value is PriorityLevel or text matching
+        if (value instanceof PriorityLevel prio) {
+            currentBg = prio.getBadgeBackgroundColor();
+            currentFg = prio.getBadgeTextColor();
+            setToolTipText("Priority Level: " + prio.getLabel());
+            return this;
+        }
+        if (value instanceof ComplaintStatus status) {
+            currentBg = status.getBadgeBackgroundColor();
+            currentFg = status.getBadgeTextColor();
+            setToolTipText("Lifecycle Status: " + status.getDisplayName());
+            return this;
+        }
+        if (value instanceof SlaStatus sla) {
+            currentBg = sla.getBadgeBg();
+            currentFg = sla.getBadgeText();
+            setToolTipText("SLA Status: " + sla.getDisplayName());
+            return this;
+        }
+        if (value instanceof EscalationLevel esc) {
+            currentBg = esc.getBadgeBg();
+            currentFg = esc.getBadgeText();
+            setToolTipText("Escalation Tier: " + esc.getDisplayName());
+            return this;
+        }
+        if (value instanceof RiskLevel risk) {
+            currentBg = risk.getBadgeBg();
+            currentFg = risk.getBadgeText();
+            setToolTipText("Predictive Risk: " + risk.getLabel());
+            return this;
+        }
+        if (value instanceof RecommendationStatus rec) {
+            currentBg = rec.getBadgeBg();
+            currentFg = rec.getBadgeText();
+            setToolTipText("Recommendation Status: " + rec.getDisplayName());
+            return this;
+        }
+
         try {
-            PriorityLevel prio = (value instanceof PriorityLevel p) ? p : PriorityLevel.fromString(text);
+            PriorityLevel prio = PriorityLevel.fromString(text);
             currentBg = prio.getBadgeBackgroundColor();
             currentFg = prio.getBadgeTextColor();
             setToolTipText("Priority Level: " + prio.getLabel());
             return this;
         } catch (Exception ignored) {}
 
-        // Check if value is ComplaintStatus or text matching
         try {
-            ComplaintStatus status = (value instanceof ComplaintStatus s) ? s : ComplaintStatus.fromString(text);
+            ComplaintStatus status = ComplaintStatus.fromString(text);
             currentBg = status.getBadgeBackgroundColor();
             currentFg = status.getBadgeTextColor();
             setToolTipText("Lifecycle Status: " + status.getDisplayName());
             return this;
         } catch (Exception ignored) {}
 
-        // Default badge
         currentBg = new java.awt.Color(241, 245, 249);
         currentFg = new java.awt.Color(71, 85, 105);
         return this;

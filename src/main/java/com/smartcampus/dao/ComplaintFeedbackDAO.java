@@ -2,8 +2,6 @@ package com.smartcampus.dao;
 
 import com.smartcampus.config.DBConnection;
 import com.smartcampus.model.ComplaintFeedback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -13,7 +11,6 @@ import java.sql.Statement;
 import java.util.Optional;
 
 public class ComplaintFeedbackDAO {
-    private static final Logger logger = LoggerFactory.getLogger(ComplaintFeedbackDAO.class);
 
     public ComplaintFeedback create(ComplaintFeedback feedback) throws SQLException {
         String sql = "INSERT INTO complaint_feedback (complaint_id, student_id, rating, comments) VALUES (?, ?, ?, ?)";

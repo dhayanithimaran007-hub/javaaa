@@ -76,7 +76,7 @@ public class UserService {
         student.setFullName(cleanName);
         student.setEmail(cleanEmail.toLowerCase().trim());
         student.setPasswordHash(PasswordUtil.hashPassword(password));
-        // Enforce STUDENT role strictly for public self-registration
+
         student.setRole(Role.STUDENT);
         student.setDepartment(department != null ? department.trim() : "");
         student.setPhone(phone != null ? phone.trim() : "");
@@ -90,7 +90,7 @@ public class UserService {
     }
 
     public User createStaffAccount(String fullName, String email, String password, String department, String phone) throws SQLException {
-        // Enforce administrative authorization
+
         UserSession.requireRole(Role.ADMIN);
         User currentAdmin = UserSession.getCurrentUser();
 
@@ -129,7 +129,6 @@ public class UserService {
         UserSession.requireLoggedIn();
         User currentUser = UserSession.getCurrentUser();
 
-        // Only allow changing own password unless administrator
         if (currentUser.getUserId() != userId && currentUser.getRole() != Role.ADMIN) {
             throw new SecurityException("Unauthorized: You can only change your own password.");
         }
@@ -137,7 +136,6 @@ public class UserService {
         User user = userDAO.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
 
-        // If not admin override, verify current password
         if (currentUser.getRole() != Role.ADMIN || currentUser.getUserId() == userId) {
             if (!PasswordUtil.verifyPassword(oldPassword, user.getPasswordHash())) {
                 throw new IllegalArgumentException("Current password is incorrect.");
@@ -201,7 +199,21 @@ public class UserService {
     }
 
     public List<User> getActiveStaffList() throws SQLException {
+        UserSession.requireLoggedIn();
         return userDAO.findActiveStaff();
     }
-}
 
+    public List<User> getActiveDemoUsers() throws SQLException {
+        return userDAO.findActiveDemoAccounts();
+    }
+
+    public com.smartcampus.model.StudentProfileDTO getStudentProfile(int studentId) throws SQLException {
+        UserSession.requireRole(Role.ADMIN);
+        return userDAO.getStudentProfile(studentId);
+    }
+
+    public java.util.Map<Integer, Integer> getStaffWorkloadMap() throws SQLException {
+        UserSession.requireRole(Role.ADMIN);
+        return userDAO.getStaffWorkloadMap();
+    }
+}

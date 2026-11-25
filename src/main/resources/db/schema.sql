@@ -1,15 +1,9 @@
--- =======================================================================
--- Smart Campus Complaint Prioritization and Tracking System
--- Database Schema Definition (MySQL 8.x Compatible)
--- =======================================================================
-
 CREATE DATABASE IF NOT EXISTS smart_campus_db
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
 USE smart_campus_db;
 
--- 1. USERS TABLE
 CREATE TABLE IF NOT EXISTS users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
@@ -25,7 +19,6 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_users_active (active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. COMPLAINTS TABLE
 CREATE TABLE IF NOT EXISTS complaints (
     complaint_id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
@@ -58,7 +51,6 @@ CREATE TABLE IF NOT EXISTS complaints (
     INDEX idx_complaints_building (building)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. COMPLAINT ASSIGNMENTS TABLE
 CREATE TABLE IF NOT EXISTS complaint_assignments (
     assignment_id INT AUTO_INCREMENT PRIMARY KEY,
     complaint_id INT NOT NULL,
@@ -74,7 +66,6 @@ CREATE TABLE IF NOT EXISTS complaint_assignments (
     INDEX idx_assignments_staff_active (staff_id, is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. COMPLAINT STATUS HISTORY TABLE
 CREATE TABLE IF NOT EXISTS complaint_status_history (
     history_id INT AUTO_INCREMENT PRIMARY KEY,
     complaint_id INT NOT NULL,
@@ -89,7 +80,6 @@ CREATE TABLE IF NOT EXISTS complaint_status_history (
     INDEX idx_history_changed_at (changed_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 5. COMPLAINT FEEDBACK TABLE
 CREATE TABLE IF NOT EXISTS complaint_feedback (
     feedback_id INT AUTO_INCREMENT PRIMARY KEY,
     complaint_id INT NOT NULL UNIQUE,
@@ -102,7 +92,6 @@ CREATE TABLE IF NOT EXISTS complaint_feedback (
     CONSTRAINT chk_feedback_rating CHECK (rating BETWEEN 1 AND 5)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 6. AUDIT LOGS TABLE
 CREATE TABLE IF NOT EXISTS audit_logs (
     audit_id INT AUTO_INCREMENT PRIMARY KEY,
     actor_user_id INT NOT NULL,
@@ -115,4 +104,79 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     INDEX idx_audit_actor (actor_user_id),
     INDEX idx_audit_created (created_at),
     INDEX idx_audit_action (action)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS complaint_escalations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    complaint_id INT NOT NULL,
+    escalation_level INT NOT NULL,
+    previous_level INT NOT NULL DEFAULT 0,
+    sla_status VARCHAR(30) NOT NULL DEFAULT 'ON_TRACK',
+    escalation_reason TEXT NOT NULL,
+    breach_at TIMESTAMP NULL DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    acknowledged_at TIMESTAMP NULL DEFAULT NULL,
+    acknowledged_by INT NULL DEFAULT NULL,
+    intervention_note TEXT DEFAULT NULL,
+    CONSTRAINT fk_esc_complaint FOREIGN KEY (complaint_id) REFERENCES complaints(complaint_id) ON DELETE CASCADE,
+    CONSTRAINT fk_esc_ack_user FOREIGN KEY (acknowledged_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    CONSTRAINT chk_esc_level CHECK (escalation_level BETWEEN 0 AND 3),
+    UNIQUE KEY uk_complaint_esc_level (complaint_id, escalation_level),
+    INDEX idx_esc_complaint (complaint_id),
+    INDEX idx_esc_level (escalation_level),
+    INDEX idx_esc_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS predictive_analysis (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    analysis_period_start TIMESTAMP NOT NULL,
+    analysis_period_end TIMESTAMP NOT NULL,
+    analysis_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    total_complaints_analyzed INT NOT NULL DEFAULT 0,
+    analysis_summary TEXT NOT NULL,
+    generated_by INT NULL DEFAULT NULL,
+    CONSTRAINT fk_pred_user FOREIGN KEY (generated_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_pred_timestamp (analysis_timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS maintenance_risk_assessments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    analysis_id INT NOT NULL,
+    building VARCHAR(100) NOT NULL,
+    location VARCHAR(120) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    incident_count INT NOT NULL,
+    risk_score DECIMAL(5,2) NOT NULL,
+    risk_level ENUM('LOW', 'MODERATE', 'HIGH', 'CRITICAL') NOT NULL,
+    contributing_factors TEXT NOT NULL,
+    recommendation TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_risk_analysis FOREIGN KEY (analysis_id) REFERENCES predictive_analysis(id) ON DELETE CASCADE,
+    CONSTRAINT chk_risk_score CHECK (risk_score BETWEEN 0.00 AND 100.00),
+    INDEX idx_risk_analysis (analysis_id),
+    INDEX idx_risk_building_cat (building, category),
+    INDEX idx_risk_level (risk_level)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS preventive_maintenance_recommendations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    risk_assessment_id INT NOT NULL,
+    building VARCHAR(100) NOT NULL,
+    location VARCHAR(120) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    risk_score DECIMAL(5,2) NOT NULL,
+    supporting_complaint_count INT NOT NULL DEFAULT 0,
+    analysis_period_days INT NOT NULL DEFAULT 30,
+    urgency VARCHAR(30) NOT NULL DEFAULT 'MEDIUM',
+    recommendation TEXT NOT NULL,
+    status ENUM('NEW', 'UNDER_REVIEW', 'APPROVED', 'SCHEDULED', 'COMPLETED', 'DISMISSED') NOT NULL DEFAULT 'NEW',
+    scheduled_date TIMESTAMP NULL DEFAULT NULL,
+    completed_at TIMESTAMP NULL DEFAULT NULL,
+    created_by INT NULL DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_rec_assessment FOREIGN KEY (risk_assessment_id) REFERENCES maintenance_risk_assessments(id) ON DELETE CASCADE,
+    CONSTRAINT fk_rec_creator FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_rec_status (status),
+    INDEX idx_rec_building_cat (building, category)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -14,11 +14,10 @@ public class DashboardStats {
     private int overdueComplaints;
     private double avgResolutionHours;
 
-    // Category breakdown
     private Map<String, Integer> complaintsByCategory = new LinkedHashMap<>();
-    // Status breakdown
+
     private Map<String, Integer> complaintsByStatus = new LinkedHashMap<>();
-    // Priority breakdown
+
     private Map<String, Integer> complaintsByPriority = new LinkedHashMap<>();
 
     public DashboardStats() {}

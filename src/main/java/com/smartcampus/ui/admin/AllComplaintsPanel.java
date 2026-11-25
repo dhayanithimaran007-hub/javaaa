@@ -3,15 +3,21 @@ package com.smartcampus.ui.admin;
 import com.smartcampus.model.Complaint;
 import com.smartcampus.model.enums.ComplaintCategory;
 import com.smartcampus.model.enums.ComplaintStatus;
-import com.smartcampus.model.enums.PriorityLevel;
 import com.smartcampus.service.ComplaintService;
 import com.smartcampus.ui.components.BadgeCellRenderer;
+import com.smartcampus.ui.components.CardPanel;
 import com.smartcampus.ui.components.ComplaintDetailsDialog;
 import com.smartcampus.ui.components.ModernButton;
+import com.smartcampus.ui.components.ToastNotification;
+import com.smartcampus.ui.components.VectorIcons;
+import com.smartcampus.ui.theme.DesignSystem;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -22,14 +28,15 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,8 +46,17 @@ public class AllComplaintsPanel extends JPanel {
     private final JComboBox<String> cmbCategory;
     private final JComboBox<String> cmbPriority;
     private final JComboBox<String> cmbStatus;
+    private final JComboBox<String> cmbBuilding;
+    private final JComboBox<String> cmbDateRange;
     private final JCheckBox chkSafetyCriticalOnly;
     private final JComboBox<String> cmbSort;
+
+    private int currentPage = 1;
+    private int pageSize = 15;
+    private final JComboBox<Integer> cmbPageSize;
+    private final JLabel lblPageStatus;
+    private final ModernButton btnPrevPage;
+    private final ModernButton btnNextPage;
 
     private final JTable tableComplaints;
     private final DefaultTableModel tableModel;
@@ -50,68 +66,85 @@ public class AllComplaintsPanel extends JPanel {
     private final ModernButton btnAssignStaff;
     private final ModernButton btnReject;
     private final ModernButton btnReopen;
+    private final ModernButton btnExport;
     private final ModernButton btnRefresh;
 
     private final ComplaintService complaintService = new ComplaintService();
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-    private final List<Complaint> currentList = new ArrayList<>();
+    private final List<Complaint> fullList = new ArrayList<>();
 
     public AllComplaintsPanel() {
-        setLayout(new BorderLayout(10, 10));
-        setBackground(new Color(248, 250, 252));
+        setLayout(new BorderLayout(12, 12));
+        setBackground(DesignSystem.BG_CANVAS);
         setBorder(BorderFactory.createEmptyBorder(18, 20, 18, 20));
 
-        // Top Filter Bar
-        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
-        topBar.setBackground(Color.WHITE);
-        topBar.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(226, 232, 240)),
-                BorderFactory.createEmptyBorder(6, 12, 6, 12)
-        ));
+        CardPanel filterContainer = new CardPanel();
+        filterContainer.setLayout(new BoxLayout(filterContainer, BoxLayout.Y_AXIS));
+        filterContainer.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
 
-        topBar.add(new JLabel("Search:"));
+        JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        row1.setOpaque(false);
+
+        row1.add(createFilterLabel("Search:"));
         txtSearch = new JTextField(12);
         txtSearch.setPreferredSize(new Dimension(140, 30));
-        topBar.add(txtSearch);
+        row1.add(txtSearch);
 
-        topBar.add(new JLabel("Category:"));
+        row1.add(createFilterLabel("Category:"));
         cmbCategory = new JComboBox<>();
         cmbCategory.addItem("ALL");
         for (ComplaintCategory cat : ComplaintCategory.values()) {
             cmbCategory.addItem(cat.getDisplayName());
         }
-        topBar.add(cmbCategory);
+        row1.add(cmbCategory);
 
-        topBar.add(new JLabel("Priority:"));
+        row1.add(createFilterLabel("Priority:"));
         cmbPriority = new JComboBox<>(new String[]{"ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW"});
-        topBar.add(cmbPriority);
+        row1.add(cmbPriority);
 
-        topBar.add(new JLabel("Status:"));
+        row1.add(createFilterLabel("Status:"));
         cmbStatus = new JComboBox<>(new String[]{"ALL", "SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "RESOLVED", "REJECTED"});
-        topBar.add(cmbStatus);
+        row1.add(cmbStatus);
 
         chkSafetyCriticalOnly = new JCheckBox("Safety Hazards Only");
-        topBar.add(chkSafetyCriticalOnly);
+        chkSafetyCriticalOnly.setFont(DesignSystem.FONT_SMALL_BOLD);
+        chkSafetyCriticalOnly.setForeground(DesignSystem.CRITICAL);
+        row1.add(chkSafetyCriticalOnly);
 
-        topBar.add(new JLabel("Sort By:"));
+        filterContainer.add(row1);
+        filterContainer.add(Box.createVerticalStrut(4));
+
+        JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        row2.setOpaque(false);
+
+        row2.add(createFilterLabel("Building:"));
+        cmbBuilding = new JComboBox<>(new String[]{"ALL"});
+        row2.add(cmbBuilding);
+
+        row2.add(createFilterLabel("Timeframe:"));
+        cmbDateRange = new JComboBox<>(new String[]{"ALL TIME", "Today", "Last 7 Days", "Last 30 Days"});
+        row2.add(cmbDateRange);
+
+        row2.add(createFilterLabel("Sort By:"));
         cmbSort = new JComboBox<>(new String[]{"Priority (Highest)", "Date (Newest)", "ID", "Status"});
-        topBar.add(cmbSort);
+        row2.add(cmbSort);
 
-        btnRefresh = new ModernButton("Apply Filters", ModernButton.ButtonType.SECONDARY);
-        topBar.add(btnRefresh);
+        btnRefresh = new ModernButton("Apply Filters", ModernButton.ButtonType.PRIMARY);
+        btnRefresh.setPreferredSize(new Dimension(110, 30));
+        row2.add(btnRefresh);
 
-        add(topBar, BorderLayout.NORTH);
+        filterContainer.add(row2);
+        add(filterContainer, BorderLayout.NORTH);
 
-        // Center Table
-        String[] columns = {"ID", "Title", "Category", "Location", "Priority", "Score", "Status", "Student", "Assigned Staff", "Date"};
+        String[] columns = {"ID", "Title", "Category", "Location", "Priority", "Score", "Status", "Student", "Assigned Staff", "Submitted Date"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
         tableComplaints = new JTable(tableModel);
-        tableComplaints.setRowHeight(32);
-        tableComplaints.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tableComplaints.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        tableComplaints.setRowHeight(34);
+        tableComplaints.setFont(DesignSystem.FONT_SMALL);
+        tableComplaints.getTableHeader().setFont(DesignSystem.FONT_SMALL_BOLD);
 
         tableComplaints.getColumnModel().getColumn(4).setCellRenderer(new BadgeCellRenderer());
         tableComplaints.getColumnModel().getColumn(6).setCellRenderer(new BadgeCellRenderer());
@@ -127,57 +160,136 @@ public class AllComplaintsPanel extends JPanel {
         tableComplaints.getColumnModel().getColumn(8).setPreferredWidth(130);
         tableComplaints.getColumnModel().getColumn(9).setPreferredWidth(110);
 
-        JScrollPane scrollPane = new JScrollPane(tableComplaints);
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(226, 232, 240)));
-
-        JPanel centerPanel = new JPanel(new BorderLayout());
-        progressBar = new JProgressBar();
-        progressBar.setIndeterminate(true);
-        progressBar.setVisible(false);
-        centerPanel.add(progressBar, BorderLayout.NORTH);
-        centerPanel.add(scrollPane, BorderLayout.CENTER);
-
-        add(centerPanel, BorderLayout.CENTER);
-
-        // Bottom Action Bar
-        JPanel bottomBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
-        bottomBar.setOpaque(false);
-
-        btnAssignStaff = new ModernButton("Assign to Staff", ModernButton.ButtonType.PRIMARY);
-        btnReject = new ModernButton("Reject Complaint", ModernButton.ButtonType.DANGER);
-        btnReopen = new ModernButton("Reopen Complaint", ModernButton.ButtonType.SECONDARY);
-        btnViewDetails = new ModernButton("View Details & Audit Trail", ModernButton.ButtonType.SECONDARY);
-
-        bottomBar.add(btnReject);
-        bottomBar.add(btnReopen);
-        bottomBar.add(btnAssignStaff);
-        bottomBar.add(btnViewDetails);
-        add(bottomBar, BorderLayout.SOUTH);
-
-        // Listeners
-        btnRefresh.addActionListener(e -> loadComplaints());
-        txtSearch.addActionListener(e -> loadComplaints());
-        cmbCategory.addActionListener(e -> loadComplaints());
-        cmbPriority.addActionListener(e -> loadComplaints());
-        cmbStatus.addActionListener(e -> loadComplaints());
-        chkSafetyCriticalOnly.addActionListener(e -> loadComplaints());
-        cmbSort.addActionListener(e -> loadComplaints());
-
         tableComplaints.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2 && tableComplaints.getSelectedRow() >= 0) {
-                    openSelectedComplaintDetails();
+                    openSelectedDetails();
                 }
             }
         });
 
-        btnViewDetails.addActionListener(e -> openSelectedComplaintDetails());
-        btnAssignStaff.addActionListener(e -> openAssignStaffDialog());
+        CardPanel centerCard = new CardPanel(new BorderLayout());
+        progressBar = new JProgressBar();
+        progressBar.setIndeterminate(true);
+        progressBar.setVisible(false);
+        centerCard.add(progressBar, BorderLayout.NORTH);
+        centerCard.add(new JScrollPane(tableComplaints), BorderLayout.CENTER);
+
+        JPanel paginationBar = new JPanel(new BorderLayout(10, 0));
+        paginationBar.setBackground(Color.WHITE);
+        paginationBar.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
+
+        JPanel leftPag = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        leftPag.setOpaque(false);
+        leftPag.add(new JLabel("Rows per page:"));
+        cmbPageSize = new JComboBox<>(new Integer[]{10, 15, 25, 50});
+        cmbPageSize.setSelectedItem(15);
+        leftPag.add(cmbPageSize);
+        paginationBar.add(leftPag, BorderLayout.WEST);
+
+        lblPageStatus = new JLabel("Showing 0 - 0 of 0 complaints");
+        lblPageStatus.setFont(DesignSystem.FONT_SMALL_BOLD);
+        lblPageStatus.setForeground(DesignSystem.TEXT_SECONDARY);
+        lblPageStatus.setHorizontalAlignment(JLabel.CENTER);
+        paginationBar.add(lblPageStatus, BorderLayout.CENTER);
+
+        JPanel rightPag = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        rightPag.setOpaque(false);
+        btnPrevPage = new ModernButton("Prev", ModernButton.ButtonType.GHOST);
+        btnPrevPage.setIcon(VectorIcons.chevronLeft(12));
+        btnPrevPage.setIconTextGap(5);
+        btnNextPage = new ModernButton("Next", ModernButton.ButtonType.GHOST);
+        btnNextPage.setIcon(VectorIcons.chevronRight(12));
+        btnNextPage.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
+        btnNextPage.setIconTextGap(5);
+        rightPag.add(btnPrevPage);
+        rightPag.add(btnNextPage);
+        paginationBar.add(rightPag, BorderLayout.EAST);
+
+        centerCard.add(paginationBar, BorderLayout.SOUTH);
+        add(centerCard, BorderLayout.CENTER);
+
+        JPanel actionToolbar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
+        actionToolbar.setOpaque(false);
+
+        btnViewDetails = new ModernButton("View Full Details", ModernButton.ButtonType.PRIMARY);
+        btnAssignStaff = new ModernButton("Assign / Dispatch Staff", ModernButton.ButtonType.SECONDARY);
+        btnReject = new ModernButton("Reject Complaint", ModernButton.ButtonType.DANGER);
+        btnReopen = new ModernButton("Reopen Complaint", ModernButton.ButtonType.SECONDARY);
+        btnExport = new ModernButton("Export Filtered (CSV)", ModernButton.ButtonType.SECONDARY);
+
+        actionToolbar.add(btnExport);
+        actionToolbar.add(btnReopen);
+        actionToolbar.add(btnReject);
+        actionToolbar.add(btnAssignStaff);
+        actionToolbar.add(btnViewDetails);
+        add(actionToolbar, BorderLayout.SOUTH);
+
+        btnRefresh.addActionListener(e -> { currentPage = 1; loadComplaints(); });
+        txtSearch.addActionListener(e -> { currentPage = 1; loadComplaints(); });
+        cmbCategory.addActionListener(e -> { currentPage = 1; loadComplaints(); });
+        cmbPriority.addActionListener(e -> { currentPage = 1; loadComplaints(); });
+        cmbStatus.addActionListener(e -> { currentPage = 1; loadComplaints(); });
+        cmbBuilding.addActionListener(e -> { currentPage = 1; loadComplaints(); });
+        cmbSort.addActionListener(e -> { currentPage = 1; loadComplaints(); });
+        chkSafetyCriticalOnly.addActionListener(e -> { currentPage = 1; loadComplaints(); });
+
+        cmbPageSize.addActionListener(e -> {
+            pageSize = (Integer) cmbPageSize.getSelectedItem();
+            currentPage = 1;
+            renderCurrentPage();
+        });
+
+        btnPrevPage.addActionListener(e -> {
+            if (currentPage > 1) {
+                currentPage--;
+                renderCurrentPage();
+            }
+        });
+
+        btnNextPage.addActionListener(e -> {
+            int maxPage = (int) Math.ceil((double) fullList.size() / pageSize);
+            if (currentPage < maxPage) {
+                currentPage++;
+                renderCurrentPage();
+            }
+        });
+
+        btnViewDetails.addActionListener(e -> openSelectedDetails());
+        btnAssignStaff.addActionListener(e -> openAssignDialog());
         btnReject.addActionListener(e -> handleReject());
         btnReopen.addActionListener(e -> handleReopen());
+        btnExport.addActionListener(e -> handleExport());
 
+        loadBuildings();
         loadComplaints();
+    }
+
+    private JLabel createFilterLabel(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(DesignSystem.FONT_SMALL_BOLD);
+        l.setForeground(DesignSystem.TEXT_SECONDARY);
+        return l;
+    }
+
+    private void loadBuildings() {
+        new SwingWorker<List<String>, Void>() {
+            @Override
+            protected List<String> doInBackground() throws Exception {
+                return complaintService.getDistinctBuildings();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<String> list = get();
+                    for (String b : list) {
+                        cmbBuilding.addItem(b);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }.execute();
     }
 
     public void loadComplaints() {
@@ -188,17 +300,21 @@ public class AllComplaintsPanel extends JPanel {
         String cat = (String) cmbCategory.getSelectedItem();
         String prio = (String) cmbPriority.getSelectedItem();
         String status = (String) cmbStatus.getSelectedItem();
-        boolean safetyOnly = chkSafetyCriticalOnly.isSelected();
+        String bldg = (String) cmbBuilding.getSelectedItem();
+        Boolean safetyOnly = chkSafetyCriticalOnly.isSelected() ? true : null;
 
-        String sortChoice = (String) cmbSort.getSelectedItem();
+        String sortSelection = (String) cmbSort.getSelectedItem();
         String sortBy = "priority";
         boolean sortAsc = false;
-        if (sortChoice != null) {
-            if (sortChoice.startsWith("Date")) { sortBy = "date"; sortAsc = false; }
-            else if (sortChoice.startsWith("ID")) { sortBy = "id"; sortAsc = false; }
-            else if (sortChoice.startsWith("Status")) { sortBy = "status"; sortAsc = true; }
-        }
+        if ("Date (Newest)".equals(sortSelection)) sortBy = "date";
+        else if ("ID".equals(sortSelection)) { sortBy = "id"; sortAsc = true; }
+        else if ("Status".equals(sortSelection)) { sortBy = "status"; sortAsc = true; }
 
+        final String fSearch = search.isEmpty() ? null : search;
+        final String fCat = "ALL".equalsIgnoreCase(cat) ? null : cat;
+        final String fPrio = "ALL".equalsIgnoreCase(prio) ? null : prio;
+        final String fStat = "ALL".equalsIgnoreCase(status) ? null : status;
+        final String fBldg = "ALL".equalsIgnoreCase(bldg) ? null : bldg;
         final String fSortBy = sortBy;
         final boolean fSortAsc = sortAsc;
 
@@ -206,8 +322,7 @@ public class AllComplaintsPanel extends JPanel {
             @Override
             protected List<Complaint> doInBackground() throws Exception {
                 return complaintService.listAllComplaintsForAdmin(
-                        status, prio, cat, null, safetyOnly, search, fSortBy, fSortAsc
-                );
+                        fStat, fPrio, fCat, fBldg, safetyOnly, fSearch, fSortBy, fSortAsc);
             }
 
             @Override
@@ -215,25 +330,11 @@ public class AllComplaintsPanel extends JPanel {
                 progressBar.setVisible(false);
                 btnRefresh.setEnabled(true);
                 try {
-                    List<Complaint> list = get();
-                    currentList.clear();
-                    currentList.addAll(list);
-                    tableModel.setRowCount(0);
-
-                    for (Complaint c : list) {
-                        tableModel.addRow(new Object[]{
-                                c.getComplaintId(),
-                                c.getTitle() + (c.isSafetyCritical() ? " [SAFETY RISK]" : ""),
-                                c.getCategory(),
-                                c.getBuilding() + " - " + c.getRoomNumber(),
-                                c.getPriority(),
-                                c.getPriorityScore(),
-                                c.getStatus(),
-                                c.getStudentName() != null ? c.getStudentName() : "ID #" + c.getStudentId(),
-                                c.getAssignedStaffName() != null ? c.getAssignedStaffName() : "— Unassigned —",
-                                c.getCreatedAt() != null ? dateFormat.format(c.getCreatedAt()) : ""
-                        });
-                    }
+                    List<Complaint> res = get();
+                    fullList.clear();
+                    fullList.addAll(res);
+                    currentPage = 1;
+                    renderCurrentPage();
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(AllComplaintsPanel.this,
                             "Failed to load complaints: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -242,128 +343,218 @@ public class AllComplaintsPanel extends JPanel {
         }.execute();
     }
 
-    private void openSelectedComplaintDetails() {
-        int row = tableComplaints.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a complaint to view.", "Selection Required", JOptionPane.INFORMATION_MESSAGE);
+    private void renderCurrentPage() {
+        tableModel.setRowCount(0);
+        int total = fullList.size();
+
+        if (total == 0) {
+            lblPageStatus.setText("Showing 0 - 0 of 0 complaints");
+            btnPrevPage.setEnabled(false);
+            btnNextPage.setEnabled(false);
             return;
         }
-        int complaintId = (Integer) tableModel.getValueAt(row, 0);
-        JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
-        new ComplaintDetailsDialog(parent, complaintId).setVisible(true);
+
+        int maxPage = (int) Math.ceil((double) total / pageSize);
+        if (currentPage > maxPage) currentPage = maxPage;
+        if (currentPage < 1) currentPage = 1;
+
+        int startIdx = (currentPage - 1) * pageSize;
+        int endIdx = Math.min(startIdx + pageSize, total);
+
+        for (int i = startIdx; i < endIdx; i++) {
+            Complaint c = fullList.get(i);
+            tableModel.addRow(new Object[]{
+                    c.getComplaintId(),
+                    c.getTitle() + (c.isSafetyCritical() ? " [SAFETY RISK]" : ""),
+                    c.getCategory(),
+                    c.getBuilding() + " - " + c.getRoomNumber(),
+                    c.getPriority(),
+                    c.getPriorityScore(),
+                    c.getStatus(),
+                    c.getStudentName() != null ? c.getStudentName() : "ID #" + c.getStudentId(),
+                    c.getAssignedStaffName() != null ? c.getAssignedStaffName() : "Unassigned",
+                    c.getCreatedAt() != null ? dateFormat.format(c.getCreatedAt()) : ""
+            });
+        }
+
+        lblPageStatus.setText(String.format("Showing %d - %d of %d complaints (Page %d of %d)",
+                startIdx + 1, endIdx, total, currentPage, maxPage));
+        btnPrevPage.setEnabled(currentPage > 1);
+        btnNextPage.setEnabled(currentPage < maxPage);
     }
 
-    private void openAssignStaffDialog() {
+    private Complaint getSelectedComplaint() {
         int row = tableComplaints.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a complaint to assign.", "Selection Required", JOptionPane.INFORMATION_MESSAGE);
-            return;
+        if (row < 0) return null;
+        int compId = (Integer) tableModel.getValueAt(row, 0);
+        for (Complaint c : fullList) {
+            if (c.getComplaintId() == compId) return c;
         }
-        Complaint c = currentList.get(row);
-        if (c.getStatus() == ComplaintStatus.RESOLVED || c.getStatus() == ComplaintStatus.REJECTED) {
-            JOptionPane.showMessageDialog(this, "Cannot assign a complaint that is already " + c.getStatus().getDisplayName() + ".",
-                    "Invalid Action", JOptionPane.WARNING_MESSAGE);
+        return null;
+    }
+
+    private void openSelectedDetails() {
+        Complaint c = getSelectedComplaint();
+        if (c == null) {
+            JOptionPane.showMessageDialog(this, "Please select a complaint to inspect.", "Notice", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
-        AssignStaffDialog dlg = new AssignStaffDialog(parent, c.getComplaintId(), c.getTitle());
+        new ComplaintDetailsDialog(parent, c.getComplaintId()).setVisible(true);
+    }
+
+    private void openAssignDialog() {
+        Complaint c = getSelectedComplaint();
+        if (c == null) {
+            JOptionPane.showMessageDialog(this, "Please select a complaint to assign.", "Notice", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        if (c.getStatus() == ComplaintStatus.RESOLVED || c.getStatus() == ComplaintStatus.REJECTED) {
+            JOptionPane.showMessageDialog(this, "Cannot assign a closed complaint.", "Notice", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
+        AssignStaffDialog dlg = new AssignStaffDialog(parent, c.getComplaintId(), c.getTitle(), c.getCategory());
         dlg.setVisible(true);
         if (dlg.isAssignedSuccessfully()) {
+            ToastNotification.showSuccess(parent, "Staff dispatched for Complaint #" + c.getComplaintId());
             loadComplaints();
         }
     }
 
     private void handleReject() {
-        int row = tableComplaints.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a complaint to reject.", "Selection Required", JOptionPane.INFORMATION_MESSAGE);
+        Complaint c = getSelectedComplaint();
+        if (c == null) {
+            JOptionPane.showMessageDialog(this, "Please select a complaint to reject.", "Notice", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        Complaint c = currentList.get(row);
-        if (c.getStatus() == ComplaintStatus.RESOLVED || c.getStatus() == ComplaintStatus.REJECTED) {
-            JOptionPane.showMessageDialog(this, "Complaint is already " + c.getStatus().getDisplayName() + ".",
-                    "Invalid Action", JOptionPane.WARNING_MESSAGE);
+
+        if (!c.getStatus().canTransitionTo(ComplaintStatus.REJECTED)) {
+            JOptionPane.showMessageDialog(this, "Complaint in status " + c.getStatus() + " cannot be rejected.", "Warning", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         String reason = JOptionPane.showInputDialog(this,
-                "Enter mandatory rejection reason for Complaint #" + c.getComplaintId() + ":",
-                "Reject Complaint", JOptionPane.WARNING_MESSAGE);
+                "Enter mandatory administrative reason for rejection of Complaint #" + c.getComplaintId() + ":",
+                "Reject Complaint", JOptionPane.QUESTION_MESSAGE);
 
-        if (reason == null || reason.trim().isEmpty()) {
-            return; // cancelled
-        }
-
-        progressBar.setVisible(true);
-        new SwingWorker<Void, Void>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                complaintService.rejectComplaint(c.getComplaintId(), reason.trim());
-                return null;
-            }
-
-            @Override
-            protected void done() {
-                progressBar.setVisible(false);
-                try {
-                    get();
-                    JOptionPane.showMessageDialog(AllComplaintsPanel.this,
-                            "Complaint #" + c.getComplaintId() + " rejected.", "Success", JOptionPane.INFORMATION_MESSAGE);
-                    loadComplaints();
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(AllComplaintsPanel.this,
-                            "Failed to reject complaint: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        if (reason != null && !reason.trim().isEmpty()) {
+            String trimmedReason = reason.trim();
+            btnReject.setEnabled(false);
+            progressBar.setVisible(true);
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    complaintService.rejectComplaint(c.getComplaintId(), trimmedReason);
+                    return null;
                 }
-            }
-        }.execute();
+
+                @Override
+                protected void done() {
+                    btnReject.setEnabled(true);
+                    progressBar.setVisible(false);
+                    try {
+                        get();
+                        JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(AllComplaintsPanel.this);
+                        ToastNotification.showSuccess(parent, "Complaint #" + c.getComplaintId() + " rejected.");
+                        loadComplaints();
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(AllComplaintsPanel.this,
+                                "Failed to reject complaint: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }.execute();
+        }
     }
 
     private void handleReopen() {
-        int row = tableComplaints.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a resolved/rejected complaint to reopen.", "Selection Required", JOptionPane.INFORMATION_MESSAGE);
+        Complaint c = getSelectedComplaint();
+        if (c == null) {
+            JOptionPane.showMessageDialog(this, "Please select a complaint to reopen.", "Notice", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        Complaint c = currentList.get(row);
+
         if (c.getStatus() != ComplaintStatus.RESOLVED && c.getStatus() != ComplaintStatus.REJECTED) {
-            JOptionPane.showMessageDialog(this, "Only RESOLVED or REJECTED complaints can be reopened.",
-                    "Invalid Action", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Only RESOLVED or REJECTED complaints can be reopened.", "Warning", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         String remarks = JOptionPane.showInputDialog(this,
                 "Enter reason for reopening Complaint #" + c.getComplaintId() + ":",
-                "Reopen Complaint", JOptionPane.QUESTION_MESSAGE);
+                "Reopen Complaint Investigation", JOptionPane.QUESTION_MESSAGE);
 
-        if (remarks == null || remarks.trim().isEmpty()) {
+        if (remarks != null && !remarks.trim().isEmpty()) {
+            String trimmedRemarks = remarks.trim();
+            btnReopen.setEnabled(false);
+            progressBar.setVisible(true);
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    complaintService.reopenComplaint(c.getComplaintId(), trimmedRemarks);
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    btnReopen.setEnabled(true);
+                    progressBar.setVisible(false);
+                    try {
+                        get();
+                        JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(AllComplaintsPanel.this);
+                        ToastNotification.showSuccess(parent, "Complaint #" + c.getComplaintId() + " reopened.");
+                        loadComplaints();
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(AllComplaintsPanel.this,
+                                "Failed to reopen complaint: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }.execute();
+        }
+    }
+
+    private void handleExport() {
+        if (fullList.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No complaints matching current filters to export.", "Notice", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
-        progressBar.setVisible(true);
-        new SwingWorker<Void, Void>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                complaintService.reopenComplaint(c.getComplaintId(), remarks.trim());
-                return null;
-            }
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Export Filtered Complaints to CSV");
+        chooser.setSelectedFile(new File("campus_complaints_export_" + System.currentTimeMillis() + ".csv"));
+        chooser.setFileFilter(new FileNameExtensionFilter("CSV Comma-Separated Values (*.csv)", "csv"));
 
-            @Override
-            protected void done() {
-                progressBar.setVisible(false);
-                try {
-                    get();
-                    JOptionPane.showMessageDialog(AllComplaintsPanel.this,
-                            "Complaint #" + c.getComplaintId() + " reopened into IN_PROGRESS.", "Success", JOptionPane.INFORMATION_MESSAGE);
-                    loadComplaints();
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(AllComplaintsPanel.this,
-                            "Failed to reopen complaint: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File selectedTarget = chooser.getSelectedFile();
+            if (!selectedTarget.getName().toLowerCase().endsWith(".csv")) {
+                selectedTarget = new File(selectedTarget.getParentFile(), selectedTarget.getName() + ".csv");
+            }
+            final File target = selectedTarget;
+            final List<Complaint> snapshot = new ArrayList<>(fullList);
+            btnExport.setEnabled(false);
+            progressBar.setVisible(true);
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    complaintService.exportComplaintsToCsv(snapshot, target);
+                    return null;
                 }
-            }
-        }.execute();
-    }
 
-    public List<Complaint> getCurrentList() {
-        return currentList;
+                @Override
+                protected void done() {
+                    btnExport.setEnabled(true);
+                    progressBar.setVisible(false);
+                    try {
+                        get();
+                        JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(AllComplaintsPanel.this);
+                        ToastNotification.showSuccess(parent, "Exported " + snapshot.size() + " complaints to " + target.getName());
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(AllComplaintsPanel.this,
+                                "Export failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }.execute();
+        }
     }
 }

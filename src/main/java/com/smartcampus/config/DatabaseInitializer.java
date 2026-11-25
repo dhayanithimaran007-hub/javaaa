@@ -8,7 +8,6 @@ import com.smartcampus.model.Complaint;
 import com.smartcampus.model.ComplaintStatusHistory;
 import com.smartcampus.model.User;
 import com.smartcampus.model.enums.ComplaintStatus;
-import com.smartcampus.model.enums.PriorityLevel;
 import com.smartcampus.model.enums.Role;
 import com.smartcampus.security.PasswordUtil;
 import com.smartcampus.service.PriorityService;
@@ -94,13 +93,13 @@ public class DatabaseInitializer {
                     sb.append(line).append("\n");
                     if (trimmed.endsWith(";")) {
                         String sql = sb.toString().trim();
-                        // Strip trailing semicolon for execution
+
                         sql = sql.substring(0, sql.length() - 1);
                         if (!sql.toLowerCase().startsWith("create database") && !sql.toLowerCase().startsWith("use ")) {
                             try {
                                 stmt.execute(sql);
                             } catch (SQLException ex) {
-                                // Table may already exist
+
                                 logger.debug("Schema statement notice: {}", ex.getMessage());
                             }
                         }
@@ -121,7 +120,7 @@ public class DatabaseInitializer {
         PriorityService priorityService = new PriorityService();
 
         try {
-            // Check if users exist
+
             boolean hasUsers = false;
             try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM users")) {
@@ -155,7 +154,6 @@ public class DatabaseInitializer {
 
                 logger.info("Default users seeded: admin@campus.edu, electrician@campus.edu, alice@student.campus.edu");
 
-                // Seed initial complaints for demonstration
                 seedSampleComplaints(conn, userDAO, complaintDAO, assignmentDAO, historyDAO, priorityService);
             }
         } catch (SQLException e) {
@@ -177,7 +175,6 @@ public class DatabaseInitializer {
         User admin = adminOpt.get();
         User staff = staffOpt.get();
 
-        // 1. Critical safety complaint
         Complaint c1 = new Complaint();
         c1.setStudentId(student.getUserId());
         c1.setTitle("Exposed High-Voltage Wiring in Physics Lab");
@@ -201,7 +198,6 @@ public class DatabaseInitializer {
         historyDAO.record(new ComplaintStatusHistory(c1.getComplaintId(), student.getUserId(), null, ComplaintStatus.SUBMITTED, "Initial submission"), conn);
         historyDAO.record(new ComplaintStatusHistory(c1.getComplaintId(), admin.getUserId(), ComplaintStatus.SUBMITTED, ComplaintStatus.ACKNOWLEDGED, "Assigned to electrician"), conn);
 
-        // 2. High priority complaint
         Complaint c2 = new Complaint();
         c2.setStudentId(student.getUserId());
         c2.setTitle("Main Campus Wi-Fi Router Down in Library");
@@ -224,7 +220,6 @@ public class DatabaseInitializer {
         historyDAO.record(new ComplaintStatusHistory(c2.getComplaintId(), student.getUserId(), null, ComplaintStatus.SUBMITTED, "Initial submission"), conn);
         historyDAO.record(new ComplaintStatusHistory(c2.getComplaintId(), admin.getUserId(), ComplaintStatus.SUBMITTED, ComplaintStatus.IN_PROGRESS, "Network technician dispatched"), conn);
 
-        // 3. Resolved complaint
         Complaint c3 = new Complaint();
         c3.setStudentId(student.getUserId());
         c3.setTitle("Water Leakage in Restroom Basin");

@@ -1,7 +1,6 @@
 package com.smartcampus.model.enums;
 
 import java.awt.Color;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -39,8 +38,8 @@ public enum ComplaintStatus {
             case SUBMITTED -> EnumSet.of(ACKNOWLEDGED, REJECTED);
             case ACKNOWLEDGED -> EnumSet.of(IN_PROGRESS, REJECTED);
             case IN_PROGRESS -> EnumSet.of(RESOLVED, REJECTED);
-            case RESOLVED -> EnumSet.of(IN_PROGRESS); // Allowed to reopen
-            case REJECTED -> EnumSet.of(SUBMITTED);   // Allowed to resubmit / reopen
+            case RESOLVED -> EnumSet.of(IN_PROGRESS);
+            case REJECTED -> EnumSet.of(SUBMITTED);
         };
     }
 

@@ -30,16 +30,36 @@ public class AppConfig {
     public static synchronized void loadConfig() {
         properties.clear();
 
-        // 1. Load defaults (no sensitive passwords in Git-tracked source code)
         properties.setProperty("db.url",
                 "jdbc:mysql://localhost:3306/smart_campus_db?serverTimezone=Asia/Kolkata&useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8");
         properties.setProperty("db.user", "root");
         properties.setProperty("db.password", "");
         properties.setProperty("app.name", "Smart Campus Complaint Prioritization and Tracking System");
-        properties.setProperty("app.version", "1.0.0");
+        properties.setProperty("app.version", "2.0.0");
         properties.setProperty("app.theme", "light");
 
-        // 2. Load from local file if exists
+        properties.setProperty("sla.critical.hours", "4");
+        properties.setProperty("sla.high.hours", "24");
+        properties.setProperty("sla.medium.hours", "72");
+        properties.setProperty("sla.low.hours", "168");
+        properties.setProperty("sla.warning.early.pct", "50");
+        properties.setProperty("sla.warning.approaching.pct", "75");
+        properties.setProperty("sla.breach.pct", "100");
+        properties.setProperty("sla.escalation.admin.threshold.pct", "125");
+        properties.setProperty("monitoring.interval.seconds", "30");
+
+        properties.setProperty("predictive.weight.frequency", "0.25");
+        properties.setProperty("predictive.weight.recurrence", "0.25");
+        properties.setProperty("predictive.weight.recency", "0.20");
+        properties.setProperty("predictive.weight.severity", "0.15");
+        properties.setProperty("predictive.weight.trend", "0.15");
+        properties.setProperty("predictive.rule.high.building.freq", "4");
+        properties.setProperty("predictive.rule.repeated.category.count", "3");
+        properties.setProperty("predictive.rule.repeated.location.count", "2");
+        properties.setProperty("predictive.rule.high.priority.count", "2");
+        properties.setProperty("predictive.rule.trend.growth.ratio", "1.25");
+        properties.setProperty("predictive.rule.repeated.asset.count", "2");
+
         File configFile = new File(CONFIG_FILE_PATH);
         if (configFile.exists() && configFile.isFile()) {
             try (InputStream in = new FileInputStream(configFile)) {
@@ -47,7 +67,7 @@ public class AppConfig {
                 fileProps.load(in);
                 for (String name : fileProps.stringPropertyNames()) {
                     String val = fileProps.getProperty(name);
-                    // Do not allow empty/blank properties to overwrite non-empty defaults
+
                     if (val != null) {
                         String trimmed = val.trim();
                         if (!trimmed.isEmpty()) {
@@ -60,7 +80,7 @@ public class AppConfig {
                 logger.warn("Could not read configuration file: {}", e.getMessage());
             }
         } else {
-            // Try classpath
+
             try (InputStream in = AppConfig.class.getClassLoader().getResourceAsStream("application.properties")) {
                 if (in != null) {
                     Properties cpProps = new Properties();
@@ -81,7 +101,6 @@ public class AppConfig {
             }
         }
 
-        // 3. Environment variables override (highest precedence)
         String envDbUrl = System.getenv("DB_URL");
         if (envDbUrl != null && !envDbUrl.isBlank()) {
             properties.setProperty("db.url", envDbUrl.trim());
@@ -132,6 +151,26 @@ public class AppConfig {
     public static String getProperty(String key, String defaultValue) {
         ensureInitialized();
         return properties.getProperty(key, defaultValue);
+    }
+
+    public static int getIntProperty(String key, int defaultValue) {
+        String val = getProperty(key, null);
+        if (val == null || val.isBlank()) return defaultValue;
+        try {
+            return Integer.parseInt(val.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    public static double getDoubleProperty(String key, double defaultValue) {
+        String val = getProperty(key, null);
+        if (val == null || val.isBlank()) return defaultValue;
+        try {
+            return Double.parseDouble(val.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 
     public static synchronized void setProperty(String key, String value) {

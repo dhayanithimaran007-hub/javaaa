@@ -1,37 +1,46 @@
 package com.smartcampus.ui.components;
 
+import com.smartcampus.ui.theme.DesignSystem;
+
 import javax.swing.JButton;
 import javax.swing.border.EmptyBorder;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 public class ModernButton extends JButton {
+
     public enum ButtonType {
-        PRIMARY(new Color(37, 99, 235), new Color(29, 78, 216), Color.WHITE),
-        SECONDARY(new Color(241, 245, 249), new Color(226, 232, 240), new Color(51, 65, 85)),
-        SUCCESS(new Color(22, 163, 74), new Color(21, 128, 61), Color.WHITE),
-        DANGER(new Color(220, 38, 38), new Color(185, 28, 28), Color.WHITE);
+        PRIMARY(DesignSystem.ELECTRIC_BLUE, DesignSystem.BLUE_HOVER, Color.WHITE, null),
+        SECONDARY(new Color(241, 245, 249), new Color(226, 232, 240), DesignSystem.TEXT_PRIMARY, DesignSystem.CARD_BORDER),
+        SUCCESS(DesignSystem.SUCCESS, new Color(18, 161, 104), Color.WHITE, null),
+        DANGER(DesignSystem.CRITICAL, new Color(219, 44, 58), Color.WHITE, null),
+        WARNING(DesignSystem.WARNING, new Color(224, 148, 24), Color.WHITE, null),
+        ACCENT(DesignSystem.VIOLET, new Color(117, 85, 235), Color.WHITE, null),
+        GHOST(new Color(0, 0, 0, 0), new Color(241, 245, 249), DesignSystem.TEXT_SECONDARY, DesignSystem.CARD_BORDER);
 
         final Color normalBg;
         final Color hoverBg;
         final Color textColor;
+        final Color borderColor;
 
-        ButtonType(Color normalBg, Color hoverBg, Color textColor) {
+        ButtonType(Color normalBg, Color hoverBg, Color textColor, Color borderColor) {
             this.normalBg = normalBg;
             this.hoverBg = hoverBg;
             this.textColor = textColor;
+            this.borderColor = borderColor;
         }
+
+        public Color getTextColor() { return textColor; }
     }
 
-    private final ButtonType type;
+    private ButtonType type;
     private boolean isHovered = false;
+    private int cornerRadius = 8;
 
     public ModernButton(String text) {
         this(text, ButtonType.PRIMARY);
@@ -40,11 +49,15 @@ public class ModernButton extends JButton {
     public ModernButton(String text, ButtonType type) {
         super(text);
         this.type = type != null ? type : ButtonType.PRIMARY;
+        initButton();
+    }
+
+    private void initButton() {
         setContentAreaFilled(false);
         setFocusPainted(false);
         setBorderPainted(false);
         setOpaque(false);
-        setFont(new Font("Segoe UI", Font.BOLD, 12));
+        setFont(DesignSystem.FONT_BODY_BOLD);
         setForeground(this.type.textColor);
         setCursor(new Cursor(Cursor.HAND_CURSOR));
         setBorder(new EmptyBorder(8, 16, 8, 16));
@@ -66,24 +79,38 @@ public class ModernButton extends JButton {
         });
     }
 
+    public void setButtonType(ButtonType type) {
+        this.type = type;
+        setForeground(type.textColor);
+        repaint();
+    }
+
+    public void setCornerRadius(int radius) {
+        this.cornerRadius = radius;
+        repaint();
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         Graphics2D g2 = (Graphics2D) g.create();
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        DesignSystem.applyQualityRendering(g2);
+
+        int w = getWidth();
+        int h = getHeight();
 
         if (!isEnabled()) {
-            g2.setColor(new Color(203, 213, 225));
-        } else if (isHovered) {
-            g2.setColor(type.hoverBg);
+            g2.setColor(new Color(226, 232, 240));
+            g2.fillRoundRect(0, 0, w, h, cornerRadius, cornerRadius);
+            setForeground(DesignSystem.TEXT_MUTED);
         } else {
-            g2.setColor(type.normalBg);
-        }
+            g2.setColor(isHovered ? type.hoverBg : type.normalBg);
+            g2.fillRoundRect(0, 0, w, h, cornerRadius, cornerRadius);
+            setForeground(type.textColor);
 
-        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
-
-        if (type == ButtonType.SECONDARY && isEnabled()) {
-            g2.setColor(new Color(203, 213, 225));
-            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+            if (type.borderColor != null) {
+                g2.setColor(type.borderColor);
+                g2.drawRoundRect(0, 0, w - 1, h - 1, cornerRadius, cornerRadius);
+            }
         }
 
         g2.dispose();

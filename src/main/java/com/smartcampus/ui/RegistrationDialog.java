@@ -44,7 +44,6 @@ public class RegistrationDialog extends JDialog {
         setResizable(false);
         setLayout(new BorderLayout());
 
-        // Header
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(new Color(24, 32, 54));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
@@ -61,7 +60,6 @@ public class RegistrationDialog extends JDialog {
         headerPanel.add(subtitleLabel, BorderLayout.SOUTH);
         add(headerPanel, BorderLayout.NORTH);
 
-        // Form Fields
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 10, 20));
         GridBagConstraints gbc = new GridBagConstraints();
@@ -105,7 +103,6 @@ public class RegistrationDialog extends JDialog {
         gbc.gridx = 1;
         formPanel.add(txtConfirmPassword, gbc);
 
-        // Security hint
         JLabel lblHint = new JLabel("<html><font color='#64748b'>Min 8 characters, must include both letters and numbers.</font></html>");
         lblHint.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         gbc.gridx = 1; gbc.gridy = 6;
@@ -119,7 +116,6 @@ public class RegistrationDialog extends JDialog {
 
         add(formPanel, BorderLayout.CENTER);
 
-        // Buttons
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
         btnRegister = new ModernButton("Create Account", ModernButton.ButtonType.PRIMARY);
         btnCancel = new ModernButton("Cancel", ModernButton.ButtonType.SECONDARY);

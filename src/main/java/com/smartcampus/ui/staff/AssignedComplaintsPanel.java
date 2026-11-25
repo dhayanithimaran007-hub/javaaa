@@ -2,11 +2,13 @@ package com.smartcampus.ui.staff;
 
 import com.smartcampus.model.Complaint;
 import com.smartcampus.model.enums.ComplaintStatus;
-import com.smartcampus.model.enums.PriorityLevel;
 import com.smartcampus.service.ComplaintService;
 import com.smartcampus.ui.components.BadgeCellRenderer;
+import com.smartcampus.ui.components.CardPanel;
 import com.smartcampus.ui.components.ComplaintDetailsDialog;
 import com.smartcampus.ui.components.ModernButton;
+import com.smartcampus.ui.components.ToastNotification;
+import com.smartcampus.ui.theme.DesignSystem;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
@@ -22,10 +24,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
@@ -49,47 +49,41 @@ public class AssignedComplaintsPanel extends JPanel {
     private final List<Complaint> currentList = new ArrayList<>();
 
     public AssignedComplaintsPanel() {
-        setLayout(new BorderLayout(10, 10));
-        setBackground(new Color(248, 250, 252));
+        setLayout(new BorderLayout(12, 12));
+        setBackground(DesignSystem.BG_CANVAS);
         setBorder(BorderFactory.createEmptyBorder(18, 20, 18, 20));
 
-        // Filter Bar
-        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
-        topBar.setBackground(Color.WHITE);
-        topBar.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(226, 232, 240)),
-                BorderFactory.createEmptyBorder(6, 12, 6, 12)
-        ));
+        CardPanel topBar = new CardPanel(new FlowLayout(FlowLayout.LEFT, 12, 10));
+        topBar.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
 
-        topBar.add(new JLabel("Search Assigned:"));
+        topBar.add(new JLabel("Search My Orders:"));
         txtSearch = new JTextField(12);
-        txtSearch.setPreferredSize(new Dimension(140, 30));
+        txtSearch.setPreferredSize(new Dimension(140, 32));
         topBar.add(txtSearch);
 
         topBar.add(new JLabel("Status:"));
         cmbStatus = new JComboBox<>(new String[]{"ALL", "ACKNOWLEDGED", "IN_PROGRESS", "RESOLVED"});
         topBar.add(cmbStatus);
 
-        btnRefresh = new ModernButton("Refresh Tasks", ModernButton.ButtonType.SECONDARY);
+        btnRefresh = new ModernButton("Refresh Tasks", ModernButton.ButtonType.PRIMARY);
         topBar.add(btnRefresh);
 
         add(topBar, BorderLayout.NORTH);
 
-        // Center Table
         String[] cols = {"ID", "Title", "Category", "Building & Room", "Priority", "Score", "Status", "Student", "Assigned Date"};
         tableModel = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
         tableAssigned = new JTable(tableModel);
-        tableAssigned.setRowHeight(32);
-        tableAssigned.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tableAssigned.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        tableAssigned.setRowHeight(34);
+        tableAssigned.setFont(DesignSystem.FONT_SMALL);
+        tableAssigned.getTableHeader().setFont(DesignSystem.FONT_SMALL_BOLD);
 
         tableAssigned.getColumnModel().getColumn(4).setCellRenderer(new BadgeCellRenderer());
         tableAssigned.getColumnModel().getColumn(6).setCellRenderer(new BadgeCellRenderer());
 
-        tableAssigned.getColumnModel().getColumn(0).setPreferredWidth(45);
+        tableAssigned.getColumnModel().getColumn(0).setPreferredWidth(50);
         tableAssigned.getColumnModel().getColumn(1).setPreferredWidth(220);
         tableAssigned.getColumnModel().getColumn(2).setPreferredWidth(140);
         tableAssigned.getColumnModel().getColumn(3).setPreferredWidth(140);
@@ -99,47 +93,43 @@ public class AssignedComplaintsPanel extends JPanel {
         tableAssigned.getColumnModel().getColumn(7).setPreferredWidth(120);
         tableAssigned.getColumnModel().getColumn(8).setPreferredWidth(120);
 
-        JScrollPane scrollPane = new JScrollPane(tableAssigned);
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(226, 232, 240)));
+        tableAssigned.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && tableAssigned.getSelectedRow() >= 0) {
+                    openSelectedDetails();
+                }
+            }
+        });
 
-        JPanel centerPanel = new JPanel(new BorderLayout());
+        CardPanel centerCard = new CardPanel(new BorderLayout());
         progressBar = new JProgressBar();
         progressBar.setIndeterminate(true);
         progressBar.setVisible(false);
-        centerPanel.add(progressBar, BorderLayout.NORTH);
-        centerPanel.add(scrollPane, BorderLayout.CENTER);
+        centerCard.add(progressBar, BorderLayout.NORTH);
+        centerCard.add(new JScrollPane(tableAssigned), BorderLayout.CENTER);
 
-        add(centerPanel, BorderLayout.CENTER);
+        add(centerCard, BorderLayout.CENTER);
 
-        // Action Buttons
         JPanel bottomBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
         bottomBar.setOpaque(false);
 
-        btnUpdateProgress = new ModernButton("Update Work Progress", ModernButton.ButtonType.PRIMARY);
-        btnMarkResolved = new ModernButton("Mark Work Resolved", ModernButton.ButtonType.SUCCESS);
-        btnViewDetails = new ModernButton("View Full Details", ModernButton.ButtonType.SECONDARY);
+        btnUpdateProgress = new ModernButton("Update Work Progress", ModernButton.ButtonType.SECONDARY);
+        btnMarkResolved = new ModernButton("Complete & Resolve", ModernButton.ButtonType.SUCCESS);
+        btnViewDetails = new ModernButton("View Full Work Order", ModernButton.ButtonType.PRIMARY);
 
-        bottomBar.add(btnViewDetails);
         bottomBar.add(btnUpdateProgress);
         bottomBar.add(btnMarkResolved);
+        bottomBar.add(btnViewDetails);
         add(bottomBar, BorderLayout.SOUTH);
 
         btnRefresh.addActionListener(e -> loadAssignedComplaints());
         txtSearch.addActionListener(e -> loadAssignedComplaints());
         cmbStatus.addActionListener(e -> loadAssignedComplaints());
 
-        tableAssigned.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2 && tableAssigned.getSelectedRow() >= 0) {
-                    openSelectedComplaintDetails();
-                }
-            }
-        });
-
-        btnViewDetails.addActionListener(e -> openSelectedComplaintDetails());
-        btnUpdateProgress.addActionListener(e -> openUpdateProgressDialog());
-        btnMarkResolved.addActionListener(e -> openResolveDialog());
+        btnViewDetails.addActionListener(e -> openSelectedDetails());
+        btnUpdateProgress.addActionListener(e -> handleUpdateProgress());
+        btnMarkResolved.addActionListener(e -> handleResolve());
 
         loadAssignedComplaints();
     }
@@ -151,12 +141,14 @@ public class AssignedComplaintsPanel extends JPanel {
         String search = txtSearch.getText().trim();
         String status = (String) cmbStatus.getSelectedItem();
 
+        final String fSearch = search.isEmpty() ? null : search;
+        final String fStat = "ALL".equalsIgnoreCase(status) ? null : status;
+
         new SwingWorker<List<Complaint>, Void>() {
             @Override
             protected List<Complaint> doInBackground() throws Exception {
                 return complaintService.listComplaints(
-                        status, null, null, null, null, search, "priority", false
-                );
+                        fStat, null, null, null, null, fSearch, "priority", false);
             }
 
             @Override
@@ -178,7 +170,7 @@ public class AssignedComplaintsPanel extends JPanel {
                                 c.getPriority(),
                                 c.getPriorityScore(),
                                 c.getStatus(),
-                                c.getStudentName() != null ? c.getStudentName() : "ID #" + c.getStudentId(),
+                                c.getStudentName() != null ? c.getStudentName() : "Student #" + c.getStudentId(),
                                 c.getCreatedAt() != null ? dateFormat.format(c.getCreatedAt()) : ""
                         });
                     }
@@ -190,52 +182,60 @@ public class AssignedComplaintsPanel extends JPanel {
         }.execute();
     }
 
-    private void openSelectedComplaintDetails() {
+    private Complaint getSelectedComplaint() {
         int row = tableAssigned.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select an assigned task to view.", "Selection Required", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        int complaintId = (Integer) tableModel.getValueAt(row, 0);
-        JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
-        new ComplaintDetailsDialog(parent, complaintId).setVisible(true);
+        if (row < 0) return null;
+        return currentList.get(row);
     }
 
-    private void openUpdateProgressDialog() {
-        int row = tableAssigned.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a complaint to update progress.", "Selection Required", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        Complaint c = currentList.get(row);
-        if (c.getStatus() == ComplaintStatus.RESOLVED || c.getStatus() == ComplaintStatus.REJECTED) {
-            JOptionPane.showMessageDialog(this, "Cannot update progress on an already " + c.getStatus().getDisplayName() + " complaint.",
-                    "Invalid Action", JOptionPane.WARNING_MESSAGE);
+    private void openSelectedDetails() {
+        Complaint c = getSelectedComplaint();
+        if (c == null) {
+            JOptionPane.showMessageDialog(this, "Please select an assigned work order to inspect.", "Notice", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
-        WorkProgressDialog dlg = new WorkProgressDialog(parent, c.getComplaintId(), c.getTitle(), c.getStatus());
+        new ComplaintDetailsDialog(parent, c.getComplaintId()).setVisible(true);
+    }
+
+    private void handleUpdateProgress() {
+        Complaint c = getSelectedComplaint();
+        if (c == null) {
+            JOptionPane.showMessageDialog(this, "Please select a work order to update.", "Notice", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        if (c.getStatus() == ComplaintStatus.RESOLVED || c.getStatus() == ComplaintStatus.REJECTED) {
+            JOptionPane.showMessageDialog(this, "Cannot update progress on closed work order.", "Notice", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
+        WorkProgressDialog dlg = new WorkProgressDialog(parent, c.getComplaintId(), c.getTitle());
         dlg.setVisible(true);
         if (dlg.isProgressUpdated()) {
+            ToastNotification.showSuccess(parent, "Work order #" + c.getComplaintId() + " progress updated.");
             loadAssignedComplaints();
         }
     }
 
-    private void openResolveDialog() {
-        int row = tableAssigned.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a complaint to resolve.", "Selection Required", JOptionPane.INFORMATION_MESSAGE);
+    private void handleResolve() {
+        Complaint c = getSelectedComplaint();
+        if (c == null) {
+            JOptionPane.showMessageDialog(this, "Please select a work order to resolve.", "Notice", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        Complaint c = currentList.get(row);
+
         if (c.getStatus() == ComplaintStatus.RESOLVED) {
-            JOptionPane.showMessageDialog(this, "Complaint is already resolved.", "Info", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "This work order is already resolved.", "Notice", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+
         JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
         ResolutionDialog dlg = new ResolutionDialog(parent, c.getComplaintId(), c.getTitle());
         dlg.setVisible(true);
-        if (dlg.isResolvedSuccessfully()) {
+        if (dlg.isResolved()) {
+            ToastNotification.showSuccess(parent, "Work order #" + c.getComplaintId() + " completed successfully.");
             loadAssignedComplaints();
         }
     }

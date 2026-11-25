@@ -1,13 +1,32 @@
-# Database Configuration
 db.url=jdbc:mysql://localhost:3306/smart_campus_db?serverTimezone=Asia/Kolkata&useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
 db.user=root
 db.password=your_mysql_password_here
 
-# Connection Pool / Driver Settings
 db.maxPoolSize=10
 db.connectionTimeoutMs=5000
 
-# Application Settings
 app.name=Smart Campus Complaint Prioritization and Tracking System
-app.version=1.0.0
+app.version=2.0.0
 app.theme=light
+
+sla.critical.hours=4
+sla.high.hours=24
+sla.medium.hours=72
+sla.low.hours=168
+sla.warning.early.pct=50
+sla.warning.approaching.pct=75
+sla.breach.pct=100
+sla.escalation.admin.threshold.pct=125
+monitoring.interval.seconds=30
+
+predictive.weight.frequency=0.25
+predictive.weight.recurrence=0.25
+predictive.weight.recency=0.20
+predictive.weight.severity=0.15
+predictive.weight.trend=0.15
+predictive.rule.high.building.freq=4
+predictive.rule.repeated.category.count=3
+predictive.rule.repeated.location.count=2
+predictive.rule.high.priority.count=2
+predictive.rule.trend.growth.ratio=1.25
+predictive.rule.repeated.asset.count=2

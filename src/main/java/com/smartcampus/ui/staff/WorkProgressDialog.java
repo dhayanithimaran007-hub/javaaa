@@ -34,6 +34,10 @@ public class WorkProgressDialog extends JDialog {
     private final ComplaintService complaintService = new ComplaintService();
     private boolean progressUpdated = false;
 
+    public WorkProgressDialog(JFrame parent, int complaintId, String complaintTitle) {
+        this(parent, complaintId, complaintTitle, ComplaintStatus.IN_PROGRESS);
+    }
+
     public WorkProgressDialog(JFrame parent, int complaintId, String complaintTitle, ComplaintStatus currentStatus) {
         super(parent, "Update Work Progress - Complaint #" + complaintId, true);
         this.complaintId = complaintId;
@@ -42,7 +46,6 @@ public class WorkProgressDialog extends JDialog {
         setResizable(false);
         setLayout(new BorderLayout());
 
-        // Header
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(new Color(24, 32, 54));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
@@ -59,7 +62,6 @@ public class WorkProgressDialog extends JDialog {
         headerPanel.add(subLabel, BorderLayout.SOUTH);
         add(headerPanel, BorderLayout.NORTH);
 
-        // Form
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 10, 20));
         GridBagConstraints gbc = new GridBagConstraints();
@@ -94,7 +96,6 @@ public class WorkProgressDialog extends JDialog {
 
         add(formPanel, BorderLayout.CENTER);
 
-        // Buttons
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
         btnUpdate = new ModernButton("Save Progress", ModernButton.ButtonType.PRIMARY);
         btnCancel = new ModernButton("Cancel", ModernButton.ButtonType.SECONDARY);

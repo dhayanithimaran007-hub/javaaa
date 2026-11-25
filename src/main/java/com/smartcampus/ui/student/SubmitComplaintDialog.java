@@ -22,7 +22,6 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingWorker;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
@@ -57,7 +56,6 @@ public class SubmitComplaintDialog extends JDialog {
         setResizable(false);
         setLayout(new BorderLayout());
 
-        // Header
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(new Color(24, 32, 54));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
@@ -74,7 +72,6 @@ public class SubmitComplaintDialog extends JDialog {
         headerPanel.add(subtitleLabel, BorderLayout.SOUTH);
         add(headerPanel, BorderLayout.NORTH);
 
-        // Form Fields
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 10, 20));
         GridBagConstraints gbc = new GridBagConstraints();
@@ -96,47 +93,41 @@ public class SubmitComplaintDialog extends JDialog {
         txtRoom = new JTextField();
 
         cmbSeverity = new JComboBox<>(new Integer[]{1, 2, 3, 4, 5});
-        cmbSeverity.setSelectedIndex(2); // default 3
+        cmbSeverity.setSelectedIndex(2);
 
         cmbSafetyRisk = new JComboBox<>(new Integer[]{0, 1, 2, 3, 4, 5});
-        cmbSafetyRisk.setSelectedIndex(0); // default 0
+        cmbSafetyRisk.setSelectedIndex(0);
 
         spnPeopleAffected = new JSpinner(new SpinnerNumberModel(10, 1, 10000, 1));
 
         cmbOperationalImpact = new JComboBox<>(new Integer[]{1, 2, 3, 4, 5});
-        cmbOperationalImpact.setSelectedIndex(2); // default 3
+        cmbOperationalImpact.setSelectedIndex(2);
 
-        // Row 0: Title
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.3;
         formPanel.add(new JLabel("Complaint Title *:"), gbc);
         gbc.gridx = 1; gbc.weightx = 0.7;
         formPanel.add(txtTitle, gbc);
 
-        // Row 1: Category
         gbc.gridx = 0; gbc.gridy = 1;
         formPanel.add(new JLabel("Category *:"), gbc);
         gbc.gridx = 1;
         formPanel.add(cmbCategory, gbc);
 
-        // Row 2: Building
         gbc.gridx = 0; gbc.gridy = 2;
         formPanel.add(new JLabel("Building / Location *:"), gbc);
         gbc.gridx = 1;
         formPanel.add(txtBuilding, gbc);
 
-        // Row 3: Room Number
         gbc.gridx = 0; gbc.gridy = 3;
         formPanel.add(new JLabel("Room / Area Number *:"), gbc);
         gbc.gridx = 1;
         formPanel.add(txtRoom, gbc);
 
-        // Row 4: Description
         gbc.gridx = 0; gbc.gridy = 4;
         formPanel.add(new JLabel("Detailed Description *:"), gbc);
         gbc.gridx = 1;
         formPanel.add(descScroll, gbc);
 
-        // Priority inputs divider
         JPanel prioPanel = new JPanel(new GridBagLayout());
         prioPanel.setBorder(BorderFactory.createTitledBorder("Priority Scoring Factors (Deterministic Calculation)"));
         GridBagConstraints pgbc = new GridBagConstraints();
@@ -163,7 +154,6 @@ public class SubmitComplaintDialog extends JDialog {
         pgbc.gridx = 1;
         prioPanel.add(cmbOperationalImpact, pgbc);
 
-        // Preview label
         lblPreview = new JLabel("Live Priority Preview: Calculating...");
         lblPreview.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblPreview.setForeground(new Color(37, 99, 235));
@@ -181,7 +171,6 @@ public class SubmitComplaintDialog extends JDialog {
 
         add(formPanel, BorderLayout.CENTER);
 
-        // Action Buttons
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
         btnSubmit = new ModernButton("Submit Complaint", ModernButton.ButtonType.PRIMARY);
         btnCancel = new ModernButton("Cancel", ModernButton.ButtonType.SECONDARY);
@@ -190,12 +179,20 @@ public class SubmitComplaintDialog extends JDialog {
         buttonPanel.add(btnSubmit);
         add(buttonPanel, BorderLayout.SOUTH);
 
-        // Listeners for live priority preview
         cmbSeverity.addActionListener(e -> updatePriorityPreview());
         cmbSafetyRisk.addActionListener(e -> updatePriorityPreview());
         spnPeopleAffected.addChangeListener(e -> updatePriorityPreview());
         cmbOperationalImpact.addActionListener(e -> updatePriorityPreview());
         cmbCategory.addActionListener(e -> updatePriorityPreview());
+
+        javax.swing.event.DocumentListener docPreviewListener = new javax.swing.event.DocumentListener() {
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { updatePriorityPreview(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { updatePriorityPreview(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { updatePriorityPreview(); }
+        };
+        txtTitle.getDocument().addDocumentListener(docPreviewListener);
+        txtDescription.getDocument().addDocumentListener(docPreviewListener);
+        txtRoom.getDocument().addDocumentListener(docPreviewListener);
 
         btnSubmit.addActionListener(e -> handleSubmit());
         btnCancel.addActionListener(e -> dispose());
@@ -211,7 +208,9 @@ public class SubmitComplaintDialog extends JDialog {
             int i = (Integer) cmbOperationalImpact.getSelectedItem();
             String cat = (String) cmbCategory.getSelectedItem();
 
-            PriorityService.PriorityResult res = priorityService.calculatePriority(s, r, a, i, cat);
+            PriorityService.PriorityResult res = priorityService.calculatePriority(
+                    s, r, a, i, cat,
+                    txtTitle.getText(), txtDescription.getText(), txtRoom.getText());
             lblPreview.setText("<html>Preview: <b>Score: " + res.score() + "</b> &nbsp;|&nbsp; Priority: <b>" +
                     res.priorityLevel().name() + "</b>" +
                     (res.isSafetyCritical() ? " <font color='#dc2626'>[CRITICAL SAFETY HAZARD]</font>" : "") +
@@ -293,6 +292,10 @@ public class SubmitComplaintDialog extends JDialog {
     }
 
     public boolean isSubmittedSuccessfully() {
+        return submittedSuccessfully;
+    }
+
+    public boolean isSubmitted() {
         return submittedSuccessfully;
     }
 }

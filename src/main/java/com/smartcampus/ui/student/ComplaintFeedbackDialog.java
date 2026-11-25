@@ -41,7 +41,6 @@ public class ComplaintFeedbackDialog extends JDialog {
         setResizable(false);
         setLayout(new BorderLayout());
 
-        // Header
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(new Color(24, 32, 54));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
@@ -58,7 +57,6 @@ public class ComplaintFeedbackDialog extends JDialog {
         headerPanel.add(subLabel, BorderLayout.SOUTH);
         add(headerPanel, BorderLayout.NORTH);
 
-        // Form
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 10, 20));
         GridBagConstraints gbc = new GridBagConstraints();
@@ -96,7 +94,6 @@ public class ComplaintFeedbackDialog extends JDialog {
 
         add(formPanel, BorderLayout.CENTER);
 
-        // Buttons
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
         btnSubmit = new ModernButton("Submit Feedback", ModernButton.ButtonType.PRIMARY);
         btnCancel = new ModernButton("Cancel", ModernButton.ButtonType.SECONDARY);

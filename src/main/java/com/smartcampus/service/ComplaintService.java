@@ -25,9 +25,11 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -63,7 +65,6 @@ public class ComplaintService {
         UserSession.requireRole(Role.STUDENT, Role.ADMIN);
         User currentUser = UserSession.getCurrentUser();
 
-        // 1. Validate fields
         ValidationUtil.requireNonBlank(complaint.getTitle(), "Title");
         ValidationUtil.requireNonBlank(complaint.getDescription(), "Description");
         ValidationUtil.requireNonBlank(complaint.getCategory(), "Category");
@@ -75,18 +76,19 @@ public class ComplaintService {
         ValidationUtil.validatePositive(complaint.getPeopleAffected(), "People Affected");
         ValidationUtil.validateRange(complaint.getOperationalImpact(), 1, 5, "Operational Impact");
 
-        // Set ownership
         if (currentUser.getRole() == Role.STUDENT || complaint.getStudentId() <= 0) {
             complaint.setStudentId(currentUser.getUserId());
         }
 
-        // 2. Deterministically calculate Priority via PriorityService (Never trust UI-supplied score)
         PriorityService.PriorityResult prioResult = priorityService.calculatePriority(
                 complaint.getSeverity(),
                 complaint.getSafetyRisk(),
                 complaint.getPeopleAffected(),
                 complaint.getOperationalImpact(),
-                complaint.getCategory()
+                complaint.getCategory(),
+                complaint.getTitle(),
+                complaint.getDescription(),
+                complaint.getRoomNumber()
         );
 
         complaint.setPriorityScore(prioResult.score());
@@ -94,7 +96,6 @@ public class ComplaintService {
         complaint.setSafetyCritical(prioResult.isSafetyCritical());
         complaint.setStatus(ComplaintStatus.SUBMITTED);
 
-        // 3. Persist atomically in a transaction
         try (Connection conn = DBConnection.getConnection()) {
             conn.setAutoCommit(false);
             try {
@@ -120,6 +121,13 @@ public class ComplaintService {
 
         auditLogDAO.log(new AuditLog(currentUser.getUserId(), "SUBMIT_COMPLAINT", "COMPLAINT",
                 complaint.getComplaintId(), "Submitted: " + complaint.getTitle()));
+
+        if (complaint.isSafetyCritical()) {
+            auditLogDAO.log(new AuditLog(currentUser.getUserId(), "SAFETY_INCIDENT_DETECTED", "COMPLAINT",
+                    complaint.getComplaintId(),
+                    String.format("Critical Safety Hazard detected in %s (%s): %s",
+                            complaint.getBuilding(), complaint.getRoomNumber(), prioResult.breakdown())));
+        }
 
         return complaint;
     }
@@ -185,7 +193,6 @@ public class ComplaintService {
         Complaint complaint = complaintDAO.findById(complaintId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found."));
 
-        // Staff assignment check
         if (currentUser.getRole() == Role.STAFF) {
             Optional<ComplaintAssignment> assignment = assignmentDAO.findActiveAssignment(complaintId);
             if (assignment.isEmpty() || assignment.get().getStaffId() != currentUser.getUserId()) {
@@ -254,6 +261,7 @@ public class ComplaintService {
             conn.setAutoCommit(false);
             try {
                 complaintDAO.updateStatusAndResolvedAt(complaintId, ComplaintStatus.RESOLVED, resolvedAt, conn);
+                assignmentDAO.deactivateForComplaint(complaintId, conn);
 
                 ComplaintStatusHistory history = new ComplaintStatusHistory();
                 history.setComplaintId(complaintId);
@@ -292,6 +300,7 @@ public class ComplaintService {
             conn.setAutoCommit(false);
             try {
                 complaintDAO.updateStatusAndResolvedAt(complaintId, ComplaintStatus.REJECTED, null, conn);
+                assignmentDAO.deactivateForComplaint(complaintId, conn);
 
                 ComplaintStatusHistory history = new ComplaintStatusHistory();
                 history.setComplaintId(complaintId);
@@ -386,7 +395,6 @@ public class ComplaintService {
         Complaint complaint = complaintDAO.findById(complaintId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint #" + complaintId + " not found."));
 
-        // If student, check ownership
         if (currentUser.getRole() == Role.STUDENT) {
             UserSession.checkStudentOwnership(complaint.getStudentId());
         }
@@ -409,9 +417,9 @@ public class ComplaintService {
         Integer staffId = null;
 
         if (currentUser.getRole() == Role.STUDENT) {
-            studentId = currentUser.getUserId(); // Strictly own complaints
+            studentId = currentUser.getUserId();
         } else if (currentUser.getRole() == Role.STAFF) {
-            staffId = currentUser.getUserId();   // Strictly assigned complaints
+            staffId = currentUser.getUserId();
         }
 
         return complaintDAO.findComplaints(
@@ -447,8 +455,8 @@ public class ComplaintService {
         UserSession.requireRole(Role.ADMIN);
         User currentAdmin = UserSession.getCurrentUser();
 
-        try (FileWriter writer = new FileWriter(destinationFile)) {
-            // Header
+        try (FileWriter writer = new FileWriter(destinationFile, StandardCharsets.UTF_8)) {
+
             writer.write("Complaint ID,Title,Category,Building,Room Number,Severity,Safety Risk,People Affected,Operational Impact,Priority Score,Priority,Safety Critical,Status,Student Name,Student Email,Assigned Staff,Created At,Resolved At\n");
 
             for (Complaint c : complaints) {
@@ -478,5 +486,82 @@ public class ComplaintService {
 
         auditLogDAO.log(new AuditLog(currentAdmin.getUserId(), "EXPORT_CSV", "REPORTS", null,
                 "Exported " + complaints.size() + " complaints to " + destinationFile.getName()));
+    }
+
+    public java.util.Map<String, Integer> getComplaintTrends(int days) throws SQLException {
+        UserSession.requireLoggedIn();
+        return complaintDAO.getComplaintTrends(days);
+    }
+
+    public java.util.Map<String, Integer> getComplaintsByDepartment() throws SQLException {
+        UserSession.requireLoggedIn();
+        return complaintDAO.getComplaintsByDepartment();
+    }
+
+    public List<com.smartcampus.model.ActivityFeedItem> getRecentActivities(int limit) throws SQLException {
+        UserSession.requireLoggedIn();
+        return complaintDAO.getRecentActivities(limit);
+    }
+
+    public List<com.smartcampus.model.StaffPerformanceDTO> getStaffPerformanceMetrics() throws SQLException {
+        UserSession.requireLoggedIn();
+        return complaintDAO.getStaffPerformanceMetrics();
+    }
+
+    public List<String> getDistinctBuildings() throws SQLException {
+        UserSession.requireLoggedIn();
+        return complaintDAO.getDistinctBuildings();
+    }
+
+    public int countUnassignedSafetyIssues() throws SQLException {
+        UserSession.requireLoggedIn();
+        return complaintDAO.countUnassignedSafetyIssues();
+    }
+
+    public List<com.smartcampus.model.StaffRecommendationDTO> recommendStaffForComplaint(String category) throws SQLException {
+        UserSession.requireRole(Role.ADMIN);
+        List<User> activeStaff = userDAO.findActiveStaff();
+        java.util.Map<Integer, Integer> workloadMap = userDAO.getStaffWorkloadMap();
+        List<com.smartcampus.model.StaffRecommendationDTO> recommendations = new ArrayList<>();
+
+        for (User staff : activeStaff) {
+            int workload = workloadMap.getOrDefault(staff.getUserId(), 0);
+            String dept = (staff.getDepartment() != null) ? staff.getDepartment().toLowerCase() : "";
+            String name = staff.getFullName().toLowerCase();
+            String cat = (category != null) ? category.toLowerCase() : "";
+
+            boolean specializationMatch = false;
+            if (cat.contains("electric") && (dept.contains("electric") || name.contains("electric"))) {
+                specializationMatch = true;
+            } else if (cat.contains("plumb") && (dept.contains("plumb") || name.contains("plumb") || dept.contains("sanitation"))) {
+                specializationMatch = true;
+            } else if ((cat.contains("wi-fi") || cat.contains("internet") || cat.contains("network")) &&
+                    (dept.contains("network") || dept.contains("it") || dept.contains("computer"))) {
+                specializationMatch = true;
+            } else if (cat.contains("classroom") && (dept.contains("av") || dept.contains("equipment") || dept.contains("it"))) {
+                specializationMatch = true;
+            } else if (cat.contains("safety") && (dept.contains("security") || dept.contains("civil") || dept.contains("facility"))) {
+                specializationMatch = true;
+            }
+
+            double matchScore = specializationMatch ? 60.0 : 20.0;
+            double workloadBonus = Math.max(0.0, 40.0 - (workload * 5.0));
+            matchScore += workloadBonus;
+
+            String reason;
+            if (specializationMatch) {
+                reason = String.format("Certified trade match for '%s' (%s) with %d active task%s.",
+                        category, staff.getDepartment(), workload, workload == 1 ? "" : "s");
+            } else {
+                reason = String.format("General maintenance dispatch with %d active task%s in queue.",
+                        workload, workload == 1 ? "" : "s");
+            }
+
+            recommendations.add(new com.smartcampus.model.StaffRecommendationDTO(
+                    staff, workload, specializationMatch, matchScore, reason));
+        }
+
+        java.util.Collections.sort(recommendations);
+        return recommendations;
     }
 }

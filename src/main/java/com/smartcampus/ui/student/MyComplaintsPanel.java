@@ -3,11 +3,12 @@ package com.smartcampus.ui.student;
 import com.smartcampus.model.Complaint;
 import com.smartcampus.model.enums.ComplaintCategory;
 import com.smartcampus.model.enums.ComplaintStatus;
-import com.smartcampus.model.enums.PriorityLevel;
 import com.smartcampus.service.ComplaintService;
 import com.smartcampus.ui.components.BadgeCellRenderer;
+import com.smartcampus.ui.components.CardPanel;
 import com.smartcampus.ui.components.ComplaintDetailsDialog;
 import com.smartcampus.ui.components.ModernButton;
+import com.smartcampus.ui.theme.DesignSystem;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
@@ -23,10 +24,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
@@ -51,21 +50,16 @@ public class MyComplaintsPanel extends JPanel {
     private final List<Complaint> currentList = new ArrayList<>();
 
     public MyComplaintsPanel() {
-        setLayout(new BorderLayout(10, 10));
-        setBackground(new Color(248, 250, 252));
+        setLayout(new BorderLayout(12, 12));
+        setBackground(DesignSystem.BG_CANVAS);
         setBorder(BorderFactory.createEmptyBorder(18, 20, 18, 20));
 
-        // Top Filter Bar
-        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
-        topBar.setBackground(Color.WHITE);
-        topBar.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(226, 232, 240)),
-                BorderFactory.createEmptyBorder(6, 12, 6, 12)
-        ));
+        CardPanel topBar = new CardPanel(new FlowLayout(FlowLayout.LEFT, 12, 10));
+        topBar.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
 
-        topBar.add(new JLabel("Search:"));
+        topBar.add(new JLabel("Search My Tickets:"));
         txtSearch = new JTextField(12);
-        txtSearch.setPreferredSize(new Dimension(140, 30));
+        txtSearch.setPreferredSize(new Dimension(140, 32));
         topBar.add(txtSearch);
 
         topBar.add(new JLabel("Category:"));
@@ -84,12 +78,11 @@ public class MyComplaintsPanel extends JPanel {
         cmbStatus = new JComboBox<>(new String[]{"ALL", "SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "RESOLVED", "REJECTED"});
         topBar.add(cmbStatus);
 
-        btnRefresh = new ModernButton("Filter / Refresh", ModernButton.ButtonType.SECONDARY);
+        btnRefresh = new ModernButton("Filter Tickets", ModernButton.ButtonType.PRIMARY);
         topBar.add(btnRefresh);
 
         add(topBar, BorderLayout.NORTH);
 
-        // Center Table
         String[] columns = {"ID", "Title", "Category", "Building & Room", "Priority", "Score", "Status", "Date Submitted"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
@@ -97,64 +90,57 @@ public class MyComplaintsPanel extends JPanel {
         };
 
         tableComplaints = new JTable(tableModel);
-        tableComplaints.setRowHeight(32);
-        tableComplaints.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tableComplaints.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
-
-        // Custom renderers
+        tableComplaints.setRowHeight(34);
+        tableComplaints.setFont(DesignSystem.FONT_SMALL);
+        tableComplaints.getTableHeader().setFont(DesignSystem.FONT_SMALL_BOLD);
         tableComplaints.getColumnModel().getColumn(4).setCellRenderer(new BadgeCellRenderer());
         tableComplaints.getColumnModel().getColumn(6).setCellRenderer(new BadgeCellRenderer());
 
-        tableComplaints.getColumnModel().getColumn(0).setPreferredWidth(45);
-        tableComplaints.getColumnModel().getColumn(1).setPreferredWidth(220);
+        tableComplaints.getColumnModel().getColumn(0).setPreferredWidth(50);
+        tableComplaints.getColumnModel().getColumn(1).setPreferredWidth(230);
         tableComplaints.getColumnModel().getColumn(2).setPreferredWidth(140);
         tableComplaints.getColumnModel().getColumn(3).setPreferredWidth(140);
         tableComplaints.getColumnModel().getColumn(4).setPreferredWidth(85);
         tableComplaints.getColumnModel().getColumn(5).setPreferredWidth(55);
-        tableComplaints.getColumnModel().getColumn(6).setPreferredWidth(100);
+        tableComplaints.getColumnModel().getColumn(6).setPreferredWidth(95);
         tableComplaints.getColumnModel().getColumn(7).setPreferredWidth(120);
 
-        JScrollPane scrollPane = new JScrollPane(tableComplaints);
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(226, 232, 240)));
+        tableComplaints.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && tableComplaints.getSelectedRow() >= 0) {
+                    openSelectedDetails();
+                }
+            }
+        });
 
-        JPanel centerPanel = new JPanel(new BorderLayout());
+        CardPanel centerCard = new CardPanel(new BorderLayout());
         progressBar = new JProgressBar();
         progressBar.setIndeterminate(true);
         progressBar.setVisible(false);
-        centerPanel.add(progressBar, BorderLayout.NORTH);
-        centerPanel.add(scrollPane, BorderLayout.CENTER);
+        centerCard.add(progressBar, BorderLayout.NORTH);
+        centerCard.add(new JScrollPane(tableComplaints), BorderLayout.CENTER);
 
-        add(centerPanel, BorderLayout.CENTER);
+        add(centerCard, BorderLayout.CENTER);
 
-        // Bottom Action Bar
         JPanel bottomBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
         bottomBar.setOpaque(false);
 
-        btnViewDetails = new ModernButton("View Details & Tracking History", ModernButton.ButtonType.PRIMARY);
-        btnGiveFeedback = new ModernButton("Submit Feedback", ModernButton.ButtonType.SUCCESS);
+        btnGiveFeedback = new ModernButton("Rate Service & Give Feedback", ModernButton.ButtonType.SECONDARY);
+        btnViewDetails = new ModernButton("View Full Progress & Audit", ModernButton.ButtonType.PRIMARY);
 
         bottomBar.add(btnGiveFeedback);
         bottomBar.add(btnViewDetails);
         add(bottomBar, BorderLayout.SOUTH);
 
-        // Listeners
         btnRefresh.addActionListener(e -> loadComplaints());
         txtSearch.addActionListener(e -> loadComplaints());
         cmbCategory.addActionListener(e -> loadComplaints());
         cmbPriority.addActionListener(e -> loadComplaints());
         cmbStatus.addActionListener(e -> loadComplaints());
 
-        tableComplaints.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2 && tableComplaints.getSelectedRow() >= 0) {
-                    openSelectedComplaintDetails();
-                }
-            }
-        });
-
-        btnViewDetails.addActionListener(e -> openSelectedComplaintDetails());
-        btnGiveFeedback.addActionListener(e -> openFeedbackDialog());
+        btnViewDetails.addActionListener(e -> openSelectedDetails());
+        btnGiveFeedback.addActionListener(e -> handleFeedback());
 
         loadComplaints();
     }
@@ -168,12 +154,16 @@ public class MyComplaintsPanel extends JPanel {
         String prio = (String) cmbPriority.getSelectedItem();
         String status = (String) cmbStatus.getSelectedItem();
 
+        final String fSearch = search.isEmpty() ? null : search;
+        final String fCat = "ALL".equalsIgnoreCase(cat) ? null : cat;
+        final String fPrio = "ALL".equalsIgnoreCase(prio) ? null : prio;
+        final String fStat = "ALL".equalsIgnoreCase(status) ? null : status;
+
         new SwingWorker<List<Complaint>, Void>() {
             @Override
             protected List<Complaint> doInBackground() throws Exception {
                 return complaintService.listComplaints(
-                        status, prio, cat, null, null, search, "priority", false
-                );
+                        fStat, fPrio, fCat, null, null, fSearch, "date", false);
             }
 
             @Override
@@ -200,36 +190,35 @@ public class MyComplaintsPanel extends JPanel {
                     }
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(MyComplaintsPanel.this,
-                            "Failed to load complaints: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                            "Failed to load my complaints: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
         }.execute();
     }
 
-    private void openSelectedComplaintDetails() {
+    private void openSelectedDetails() {
         int row = tableComplaints.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a complaint to view.", "Selection Required", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Please select a complaint to inspect.", "Notice", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        int complaintId = (Integer) tableModel.getValueAt(row, 0);
+        Complaint c = currentList.get(row);
         JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
-        new ComplaintDetailsDialog(parent, complaintId).setVisible(true);
+        new ComplaintDetailsDialog(parent, c.getComplaintId()).setVisible(true);
     }
 
-    private void openFeedbackDialog() {
+    private void handleFeedback() {
         int row = tableComplaints.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a resolved complaint to give feedback.", "Selection Required", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Please select a resolved complaint to give feedback.", "Notice", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         Complaint c = currentList.get(row);
         if (c.getStatus() != ComplaintStatus.RESOLVED) {
-            JOptionPane.showMessageDialog(this,
-                    "Feedback can only be provided for RESOLVED complaints. This complaint is currently " + c.getStatus().getDisplayName() + ".",
-                    "Not Resolved", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Feedback can only be provided for RESOLVED complaints.", "Notice", JOptionPane.WARNING_MESSAGE);
             return;
         }
+
         JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
         ComplaintFeedbackDialog dlg = new ComplaintFeedbackDialog(parent, c.getComplaintId(), c.getTitle());
         dlg.setVisible(true);

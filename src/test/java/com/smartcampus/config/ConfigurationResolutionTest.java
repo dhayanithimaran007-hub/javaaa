@@ -87,14 +87,12 @@ class ConfigurationResolutionTest {
         assertTrue(AppConfig.getDbUrl().startsWith("jdbc:mysql://"));
         assertEquals("root", AppConfig.getDbUser());
 
-        // Update in-memory credentials without persistence
         AppConfig.updateDbCredentials("jdbc:mysql://127.0.0.1:3306/testdb", "testuser", "testpass", false);
         assertEquals("jdbc:mysql://127.0.0.1:3306/testdb", AppConfig.getDbUrl());
         assertEquals("testuser", AppConfig.getDbUser());
         assertEquals("testpass", AppConfig.getDbPassword());
         assertTrue(AppConfig.isDbPasswordConfigured());
 
-        // Reload configuration from actual config file
         AppConfig.loadConfig();
     }
 
@@ -115,7 +113,6 @@ class ConfigurationResolutionTest {
             }
         }
 
-        // db.password should remain PreConfiguredPassword, not overwritten by empty string
         assertEquals("PreConfiguredPassword", baseProps.getProperty("db.password"));
         assertEquals("root", baseProps.getProperty("db.user"));
     }
@@ -142,4 +139,3 @@ class ConfigurationResolutionTest {
         assertEquals(com.smartcampus.model.enums.Role.ADMIN, user.getRole());
     }
 }
-

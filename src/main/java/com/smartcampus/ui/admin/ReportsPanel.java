@@ -2,9 +2,15 @@ package com.smartcampus.ui.admin;
 
 import com.smartcampus.model.Complaint;
 import com.smartcampus.model.DashboardStats;
+import com.smartcampus.model.StaffPerformanceDTO;
 import com.smartcampus.service.ComplaintService;
+import com.smartcampus.ui.charts.DonutChartPanel;
+import com.smartcampus.ui.charts.HorizontalBarChartPanel;
+import com.smartcampus.ui.components.CardPanel;
 import com.smartcampus.ui.components.ModernButton;
 import com.smartcampus.ui.components.StatCard;
+import com.smartcampus.ui.components.ToastNotification;
+import com.smartcampus.ui.theme.DesignSystem;
 
 import javax.swing.BorderFactory;
 import javax.swing.JFileChooser;
@@ -20,99 +26,117 @@ import javax.swing.SwingWorker;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.GridLayout;
 import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class ReportsPanel extends JPanel {
     private final StatCard cardTotal;
     private final StatCard cardResolved;
+    private final StatCard cardRate;
     private final StatCard cardAvgTime;
     private final StatCard cardOverdue;
-    private final StatCard cardRate;
 
-    private final JTable tableCategoryBreakdown;
-    private final DefaultTableModel catModel;
-    private final JTable tableStatusBreakdown;
-    private final DefaultTableModel statusModel;
+    private final DonutChartPanel donutCategory;
+    private final HorizontalBarChartPanel barDept;
+
+    private final JTable tableStaffScorecard;
+    private final DefaultTableModel staffModel;
 
     private final JProgressBar progressBar;
+    private final ModernButton btnPrintableReport;
     private final ModernButton btnExportCsv;
     private final ModernButton btnRefresh;
 
     private final ComplaintService complaintService = new ComplaintService();
 
+    private DashboardStats currentStats = new DashboardStats();
+    private Map<String, Integer> currentDeptMap = Map.of();
+    private List<StaffPerformanceDTO> currentStaffMetrics = new ArrayList<>();
+
     public ReportsPanel() {
-        setLayout(new BorderLayout(15, 15));
-        setBackground(new Color(248, 250, 252));
+        setLayout(new BorderLayout(14, 14));
+        setBackground(DesignSystem.BG_CANVAS);
         setBorder(BorderFactory.createEmptyBorder(18, 20, 18, 20));
 
-        // Top KPI Row
         JPanel topKpi = new JPanel(new GridLayout(1, 5, 12, 12));
         topKpi.setOpaque(false);
 
-        cardTotal = new StatCard("Total Complaints", "0", "Campus all-time", new Color(37, 99, 235));
-        cardResolved = new StatCard("Resolved Count", "0", "Successfully closed", new Color(22, 163, 74));
-        cardRate = new StatCard("Resolution Rate", "0%", "Resolved / Total", new Color(13, 148, 136));
-        cardAvgTime = new StatCard("Avg Resolution", "0h", "Calculated turn-around", new Color(217, 119, 6));
-        cardOverdue = new StatCard("Overdue Issues", "0", ">72h unresolved", new Color(220, 38, 38));
+        cardTotal = new StatCard("Total Logged", "0", "All-time campus entries", DesignSystem.ELECTRIC_BLUE);
+        cardResolved = new StatCard("Resolved", "0", "Successfully closed", DesignSystem.SUCCESS);
+        cardRate = new StatCard("Resolution Rate", "0%", "Closed / Total", DesignSystem.CYAN);
+        cardAvgTime = new StatCard("Avg Turnaround", "0h", "Resolution turnaround", DesignSystem.WARNING);
+        cardOverdue = new StatCard("Overdue Issues", "0", "Priority SLA breached", DesignSystem.CRITICAL);
 
         topKpi.add(cardTotal);
         topKpi.add(cardResolved);
         topKpi.add(cardRate);
         topKpi.add(cardAvgTime);
         topKpi.add(cardOverdue);
-
         add(topKpi, BorderLayout.NORTH);
 
-        // Center Breakdowns
-        JPanel tablesPanel = new JPanel(new GridLayout(1, 2, 16, 16));
-        tablesPanel.setOpaque(false);
+        JPanel centerGrid = new JPanel(new GridLayout(2, 1, 14, 14));
+        centerGrid.setOpaque(false);
 
-        // 1. Category table
-        JPanel pnlCat = new JPanel(new BorderLayout(8, 8));
-        pnlCat.setBackground(Color.WHITE);
-        pnlCat.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(226, 232, 240)),
-                BorderFactory.createEmptyBorder(12, 16, 12, 16)
-        ));
-        JLabel lblCat = new JLabel("Complaints by Category");
-        lblCat.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        pnlCat.add(lblCat, BorderLayout.NORTH);
+        JPanel chartsRow = new JPanel(new GridLayout(1, 2, 14, 0));
+        chartsRow.setOpaque(false);
 
-        catModel = new DefaultTableModel(new String[]{"Category", "Total Count", "Share %"}, 0) {
+        CardPanel pnlDonut = new CardPanel(new BorderLayout(6, 6));
+        pnlDonut.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+        JLabel lblDonut = new JLabel("Complaint Distribution by Category");
+        lblDonut.setFont(DesignSystem.FONT_SUBTITLE);
+        lblDonut.setForeground(DesignSystem.TEXT_PRIMARY);
+        pnlDonut.add(lblDonut, BorderLayout.NORTH);
+        donutCategory = new DonutChartPanel();
+        donutCategory.setCenterText("Total", "0");
+        pnlDonut.add(donutCategory, BorderLayout.CENTER);
+        chartsRow.add(pnlDonut);
+
+        CardPanel pnlBar = new CardPanel(new BorderLayout(6, 6));
+        pnlBar.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+        JLabel lblBar = new JLabel("Incidents by Academic Department");
+        lblBar.setFont(DesignSystem.FONT_SUBTITLE);
+        lblBar.setForeground(DesignSystem.TEXT_PRIMARY);
+        pnlBar.add(lblBar, BorderLayout.NORTH);
+        barDept = new HorizontalBarChartPanel();
+        pnlBar.add(barDept, BorderLayout.CENTER);
+        chartsRow.add(pnlBar);
+
+        centerGrid.add(chartsRow);
+
+        CardPanel scorecardCard = new CardPanel(new BorderLayout(8, 8));
+        scorecardCard.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+
+        JLabel lblScorecard = new JLabel("Maintenance Staff Productivity Scorecard");
+        lblScorecard.setFont(DesignSystem.FONT_SUBTITLE);
+        lblScorecard.setForeground(DesignSystem.TEXT_PRIMARY);
+        scorecardCard.add(lblScorecard, BorderLayout.NORTH);
+
+        String[] cols = {"Staff ID", "Technician Name", "Specialization", "Tasks Assigned", "Tasks Resolved", "Resolution Rate", "Avg Turnaround", "Student Rating", "Active Load"};
+        staffModel = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
-        tableCategoryBreakdown = new JTable(catModel);
-        tableCategoryBreakdown.setRowHeight(28);
-        pnlCat.add(new JScrollPane(tableCategoryBreakdown), BorderLayout.CENTER);
-        tablesPanel.add(pnlCat);
 
-        // 2. Status & Priority table
-        JPanel pnlStatus = new JPanel(new BorderLayout(8, 8));
-        pnlStatus.setBackground(Color.WHITE);
-        pnlStatus.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(226, 232, 240)),
-                BorderFactory.createEmptyBorder(12, 16, 12, 16)
-        ));
-        JLabel lblStat = new JLabel("Lifecycle Status Distribution");
-        lblStat.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        pnlStatus.add(lblStat, BorderLayout.NORTH);
+        tableStaffScorecard = new JTable(staffModel);
+        tableStaffScorecard.setRowHeight(32);
+        tableStaffScorecard.setFont(DesignSystem.FONT_SMALL);
+        tableStaffScorecard.getTableHeader().setFont(DesignSystem.FONT_SMALL_BOLD);
 
-        statusModel = new DefaultTableModel(new String[]{"Status", "Count", "Percentage"}, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
-        };
-        tableStatusBreakdown = new JTable(statusModel);
-        tableStatusBreakdown.setRowHeight(28);
-        pnlStatus.add(new JScrollPane(tableStatusBreakdown), BorderLayout.CENTER);
-        tablesPanel.add(pnlStatus);
+        tableStaffScorecard.getColumnModel().getColumn(0).setPreferredWidth(55);
+        tableStaffScorecard.getColumnModel().getColumn(1).setPreferredWidth(170);
+        tableStaffScorecard.getColumnModel().getColumn(2).setPreferredWidth(160);
+        tableStaffScorecard.getColumnModel().getColumn(3).setPreferredWidth(100);
+        tableStaffScorecard.getColumnModel().getColumn(4).setPreferredWidth(100);
+        tableStaffScorecard.getColumnModel().getColumn(5).setPreferredWidth(110);
+        tableStaffScorecard.getColumnModel().getColumn(6).setPreferredWidth(110);
+        tableStaffScorecard.getColumnModel().getColumn(7).setPreferredWidth(100);
+        tableStaffScorecard.getColumnModel().getColumn(8).setPreferredWidth(95);
+
+        scorecardCard.add(new JScrollPane(tableStaffScorecard), BorderLayout.CENTER);
+        centerGrid.add(scorecardCard);
 
         JPanel centerWrap = new JPanel(new BorderLayout());
         centerWrap.setOpaque(false);
@@ -120,23 +144,24 @@ public class ReportsPanel extends JPanel {
         progressBar.setIndeterminate(true);
         progressBar.setVisible(false);
         centerWrap.add(progressBar, BorderLayout.NORTH);
-        centerWrap.add(tablesPanel, BorderLayout.CENTER);
-
+        centerWrap.add(centerGrid, BorderLayout.CENTER);
         add(centerWrap, BorderLayout.CENTER);
 
-        // Bottom Actions
         JPanel bottomBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
         bottomBar.setOpaque(false);
 
-        btnExportCsv = new ModernButton("Export Authorized Report (CSV)", ModernButton.ButtonType.PRIMARY);
-        btnRefresh = new ModernButton("Refresh Metrics", ModernButton.ButtonType.SECONDARY);
+        btnPrintableReport = new ModernButton("Printable Executive Report", ModernButton.ButtonType.PRIMARY);
+        btnExportCsv = new ModernButton("Export Authorized CSV", ModernButton.ButtonType.SECONDARY);
+        btnRefresh = new ModernButton("Refresh Analytics", ModernButton.ButtonType.SECONDARY);
 
         bottomBar.add(btnRefresh);
         bottomBar.add(btnExportCsv);
+        bottomBar.add(btnPrintableReport);
         add(bottomBar, BorderLayout.SOUTH);
 
         btnRefresh.addActionListener(e -> loadReportData());
         btnExportCsv.addActionListener(e -> handleExportCsv());
+        btnPrintableReport.addActionListener(e -> openPrintableReport());
 
         loadReportData();
     }
@@ -145,10 +170,13 @@ public class ReportsPanel extends JPanel {
         progressBar.setVisible(true);
         btnRefresh.setEnabled(false);
 
-        new SwingWorker<DashboardStats, Void>() {
+        new SwingWorker<ReportPayload, Void>() {
             @Override
-            protected DashboardStats doInBackground() throws Exception {
-                return complaintService.getDashboardStats();
+            protected ReportPayload doInBackground() throws Exception {
+                DashboardStats stats = complaintService.getDashboardStats();
+                Map<String, Integer> deptMap = complaintService.getComplaintsByDepartment();
+                List<StaffPerformanceDTO> metrics = complaintService.getStaffPerformanceMetrics();
+                return new ReportPayload(stats, deptMap, metrics);
             }
 
             @Override
@@ -156,36 +184,37 @@ public class ReportsPanel extends JPanel {
                 progressBar.setVisible(false);
                 btnRefresh.setEnabled(true);
                 try {
-                    DashboardStats stats = get();
-                    int total = stats.getTotalComplaints();
-                    int resolved = stats.getResolvedComplaints();
-                    double rate = total > 0 ? ((double) resolved / total) * 100.0 : 0.0;
+                    ReportPayload data = get();
+                    currentStats = data.stats;
+                    currentDeptMap = data.deptMap;
+                    currentStaffMetrics = data.staffMetrics;
 
-                    cardTotal.setValue(total);
-                    cardResolved.setValue(resolved);
+                    cardTotal.setValue(currentStats.getTotalComplaints());
+                    cardResolved.setValue(currentStats.getResolvedComplaints());
+                    double rate = currentStats.getTotalComplaints() > 0
+                            ? ((double) currentStats.getResolvedComplaints() / currentStats.getTotalComplaints()) * 100.0 : 0.0;
                     cardRate.setValue(String.format("%.1f%%", rate));
-                    cardAvgTime.setValue(String.format("%.1fh", stats.getAvgResolutionHours()));
-                    cardOverdue.setValue(stats.getOverdueComplaints());
+                    cardAvgTime.setValue(String.format("%.1fh", currentStats.getAvgResolutionHours()));
+                    cardOverdue.setValue(currentStats.getOverdueComplaints());
 
-                    // Populate categories
-                    catModel.setRowCount(0);
-                    for (Map.Entry<String, Integer> entry : stats.getComplaintsByCategory().entrySet()) {
-                        double share = total > 0 ? ((double) entry.getValue() / total) * 100.0 : 0.0;
-                        catModel.addRow(new Object[]{
-                                entry.getKey(),
-                                entry.getValue(),
-                                String.format("%.1f%%", share)
-                        });
-                    }
+                    donutCategory.setData(currentStats.getComplaintsByCategory());
+                    donutCategory.setCenterText("Total", String.valueOf(currentStats.getTotalComplaints()));
 
-                    // Populate statuses
-                    statusModel.setRowCount(0);
-                    for (Map.Entry<String, Integer> entry : stats.getComplaintsByStatus().entrySet()) {
-                        double share = total > 0 ? ((double) entry.getValue() / total) * 100.0 : 0.0;
-                        statusModel.addRow(new Object[]{
-                                entry.getKey(),
-                                entry.getValue(),
-                                String.format("%.1f%%", share)
+                    barDept.setData(currentDeptMap);
+
+                    staffModel.setRowCount(0);
+                    for (StaffPerformanceDTO s : currentStaffMetrics) {
+                        String rating = (s.avgRating() > 0) ? String.format("%.1f / 5.0", s.avgRating()) : "N/A";
+                        staffModel.addRow(new Object[]{
+                                s.staffId(),
+                                s.fullName(),
+                                s.department() != null ? s.department() : "Facilities",
+                                s.assignedCount(),
+                                s.resolvedCount(),
+                                String.format("%.1f%%", s.getResolutionRate()),
+                                String.format("%.1fh", s.avgResolutionHours()),
+                                rating,
+                                s.activeTasks() + " active"
                         });
                     }
                 } catch (Exception ex) {
@@ -196,48 +225,34 @@ public class ReportsPanel extends JPanel {
         }.execute();
     }
 
+    private void openPrintableReport() {
+        JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
+        PrintableReportDialog dlg = new PrintableReportDialog(parent, currentStats, currentDeptMap, currentStaffMetrics);
+        dlg.setVisible(true);
+    }
+
     private void handleExportCsv() {
         JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Export Complaints Report as CSV");
-        String defaultName = "Campus_Complaints_Report_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".csv";
-        chooser.setSelectedFile(new File(defaultName));
-        chooser.setFileFilter(new FileNameExtensionFilter("CSV Files (*.csv)", "csv"));
+        chooser.setDialogTitle("Export Full Complaint Analytics Dataset");
+        chooser.setSelectedFile(new File("campus_operations_audit_" + System.currentTimeMillis() + ".csv"));
+        chooser.setFileFilter(new FileNameExtensionFilter("CSV Comma-Separated Values (*.csv)", "csv"));
 
-        int userSelection = chooser.showSaveDialog(this);
-        if (userSelection == JFileChooser.APPROVE_OPTION) {
-            File fileToSave = chooser.getSelectedFile();
-            if (!fileToSave.getName().toLowerCase().endsWith(".csv")) {
-                fileToSave = new File(fileToSave.getParentFile(), fileToSave.getName() + ".csv");
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File target = chooser.getSelectedFile();
+            if (!target.getName().toLowerCase().endsWith(".csv")) {
+                target = new File(target.getParentFile(), target.getName() + ".csv");
             }
-
-            File finalFile = fileToSave;
-            progressBar.setVisible(true);
-            btnExportCsv.setEnabled(false);
-
-            new SwingWorker<Integer, Void>() {
-                @Override
-                protected Integer doInBackground() throws Exception {
-                    List<Complaint> allComplaints = complaintService.listAllComplaintsForAdmin(
-                            null, null, null, null, null, null, "priority", false);
-                    complaintService.exportComplaintsToCsv(allComplaints, finalFile);
-                    return allComplaints.size();
-                }
-
-                @Override
-                protected void done() {
-                    progressBar.setVisible(false);
-                    btnExportCsv.setEnabled(true);
-                    try {
-                        int exportedCount = get();
-                        JOptionPane.showMessageDialog(ReportsPanel.this,
-                                "Successfully exported " + exportedCount + " complaints to:\n" + finalFile.getAbsolutePath(),
-                                "Export Complete", JOptionPane.INFORMATION_MESSAGE);
-                    } catch (Exception ex) {
-                        JOptionPane.showMessageDialog(ReportsPanel.this,
-                                "Failed to export report: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                    }
-                }
-            }.execute();
+            try {
+                List<Complaint> all = complaintService.listAllComplaintsForAdmin(
+                        null, null, null, null, null, null, "id", true);
+                complaintService.exportComplaintsToCsv(all, target);
+                JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
+                ToastNotification.showSuccess(parent, "Exported " + all.size() + " complaints to " + target.getName());
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Export failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
+
+    private record ReportPayload(DashboardStats stats, Map<String, Integer> deptMap, List<StaffPerformanceDTO> staffMetrics) {}
 }

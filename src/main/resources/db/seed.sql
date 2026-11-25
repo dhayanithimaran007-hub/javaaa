@@ -1,17 +1,4 @@
--- =======================================================================
--- Smart Campus Complaint System - Seed Data Script
--- =======================================================================
-
 USE smart_campus_db;
-
--- 1. SEED USERS
--- Password for all seed users is standard format:
---   Admin:       admin@campus.edu       / Admin@123
---   Staff:       electrician@campus.edu / Staff@123
---   Staff:       plumber@campus.edu     / Staff@123
---   Student:     alice@student.campus.edu / Student@123
---   Student:     bob@student.campus.edu   / Student@123
--- The passwords below are hashed with standard BCrypt (cost factor 12)
 
 INSERT INTO users (user_id, full_name, email, password_hash, role, department, phone, active) VALUES
 (1, 'Campus Administrator', 'admin@campus.edu', '$2a$12$6LT7GJOQUYo9RqjI/wqkBO5EjfIfLfNrgeNnTK5ftYHJ9EIMf.ySi', 'ADMIN', 'Administration', '9876543210', TRUE),
@@ -21,7 +8,6 @@ INSERT INTO users (user_id, full_name, email, password_hash, role, department, p
 (5, 'Bob Verghese', 'bob@student.campus.edu', '$2a$12$hdbbAfxhYEarTxU8Iezf5u/RdeNlsbBhXDd.jX0BakGH5B2sZtnTy', 'STUDENT', 'Mechanical Engineering', '9876543214', TRUE)
 ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash);
 
--- 2. SEED SAMPLE COMPLAINTS
 INSERT IGNORE INTO complaints (complaint_id, student_id, title, description, category, building, room_number,
     severity, safety_risk, people_affected, operational_impact, priority_score, priority, is_safety_critical, status, created_at, resolved_at)
 VALUES
@@ -37,13 +23,11 @@ VALUES
 (4, 5, 'Broken Projector in Lecture Hall 3', 'Projector HDMI port does not transmit video output. Morning lectures disrupted.',
  'Classroom Equipment', 'Engineering Block', 'LH 301', 3, 0, 80, 4, 49.00, 'MEDIUM', FALSE, 'SUBMITTED', DATE_SUB(NOW(), INTERVAL 2 HOUR), NULL);
 
--- 3. SEED ASSIGNMENTS
 INSERT IGNORE INTO complaint_assignments (assignment_id, complaint_id, staff_id, assigned_by, assigned_at, notes, is_active)
 VALUES
 (1, 1, 2, 1, DATE_SUB(NOW(), INTERVAL 3 HOUR), 'Urgent safety hazard - inspect immediately', TRUE),
 (2, 3, 3, 1, DATE_SUB(NOW(), INTERVAL 20 HOUR), 'Fix basin plumbing', FALSE);
 
--- 4. SEED STATUS HISTORY
 INSERT IGNORE INTO complaint_status_history (history_id, complaint_id, changed_by, old_status, new_status, remarks, changed_at)
 VALUES
 (1, 1, 4, NULL, 'SUBMITTED', 'Complaint submitted.', DATE_SUB(NOW(), INTERVAL 4 HOUR)),
@@ -54,7 +38,6 @@ VALUES
 (6, 3, 3, 'SUBMITTED', 'RESOLVED', 'Resolution: Replaced Teflon tape and washers. No more leaks.', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
 (7, 4, 5, NULL, 'SUBMITTED', 'Complaint submitted.', DATE_SUB(NOW(), INTERVAL 2 HOUR));
 
--- 5. SEED FEEDBACK
 INSERT IGNORE INTO complaint_feedback (feedback_id, complaint_id, student_id, rating, comments, created_at)
 VALUES
 (1, 3, 4, 5, 'Promptly fixed! The washroom is clean and the leak stopped.', DATE_SUB(NOW(), INTERVAL 1 HOUR));
